@@ -48,15 +48,11 @@ import configparser
 ## Configuration Manager
 ## (ini files)
 ##############################
-##############################
-## Configuration Manager
-## (ini files)
-##############################
 def readConfig():
 	try:
 		config = configparser.ConfigParser()
 		config.read(SAMPLES_DIR + "/config.ini")
-
+		
 		global AUDIO_DEVICE_ID
 		global preset
 		global sustain
@@ -85,54 +81,54 @@ readConfig()
 #########################################
 
 class waveread(wave.Wave_read):
-        def initfp(self, file):
-                self._convert = None
-                self._soundpos = 0
-                self._cue = []
-                self._loops = []
-                self._ieee = False
-                self._file = Chunk(file, bigendian = 0)
-                if self._file.getname() != 'RIFF':
-                        raise Error, 'file does not start with RIFF id'
-                if self._file.read(4) != 'WAVE':
-                        raise Error, 'not a WAVE file'
-                self._fmt_chunk_read = 0
-                self._data_chunk = None
-                while 1:
-                        self._data_seek_needed = 1
-                        try:
-                                chunk = Chunk(self._file, bigendian = 0)
-                        except EOFError:
-                                break
-                        chunkname = chunk.getname()
-                        if chunkname == 'fmt ':
-                                self._read_fmt_chunk(chunk)
-                                self._fmt_chunk_read = 1
-                        elif chunkname == 'data':
-                                if not self._fmt_chunk_read:
-                                        raise Error, 'data chunk before fmt chunk'
-                                self._data_chunk = chunk
-                                self._nframes = chunk.chunksize // self._framesize
-                                self._data_seek_needed = 0
-                        elif chunkname == 'cue ':
-                                numcue = struct.unpack('<i',chunk.read(4))[0]
-                                for i in range(numcue):
-                                  id, position, datachunkid, chunkstart, blockstart, sampleoffset = struct.unpack('<iiiiii',chunk.read(24))
-                                  self._cue.append(sampleoffset)
-                        elif chunkname == 'smpl':
-                                manuf, prod, sampleperiod, midiunitynote, midipitchfraction, smptefmt, smpteoffs, numsampleloops, samplerdata = struct.unpack('<iiiiiiiii',chunk.read(36))
-                                for i in range(numsampleloops):
-                                   cuepointid, type, start, end, fraction, playcount = struct.unpack('<iiiiii',chunk.read(24))
-                                   self._loops.append([start,end])
-                        chunk.skip()
-                if not self._fmt_chunk_read or not self._data_chunk:
-                        raise Error, 'fmt chunk and/or data chunk missing'
+		def initfp(self, file):
+				self._convert = None
+				self._soundpos = 0
+				self._cue = []
+				self._loops = []
+				self._ieee = False
+				self._file = Chunk(file, bigendian = 0)
+				if self._file.getname() != 'RIFF':
+						raise Error, 'file does not start with RIFF id'
+				if self._file.read(4) != 'WAVE':
+						raise Error, 'not a WAVE file'
+				self._fmt_chunk_read = 0
+				self._data_chunk = None
+				while 1:
+						self._data_seek_needed = 1
+						try:
+								chunk = Chunk(self._file, bigendian = 0)
+						except EOFError:
+								break
+						chunkname = chunk.getname()
+						if chunkname == 'fmt ':
+								self._read_fmt_chunk(chunk)
+								self._fmt_chunk_read = 1
+						elif chunkname == 'data':
+								if not self._fmt_chunk_read:
+										raise Error, 'data chunk before fmt chunk'
+								self._data_chunk = chunk
+								self._nframes = chunk.chunksize // self._framesize
+								self._data_seek_needed = 0
+						elif chunkname == 'cue ':
+								numcue = struct.unpack('<i',chunk.read(4))[0]
+								for i in range(numcue):
+								  id, position, datachunkid, chunkstart, blockstart, sampleoffset = struct.unpack('<iiiiii',chunk.read(24))
+								  self._cue.append(sampleoffset)
+						elif chunkname == 'smpl':
+								manuf, prod, sampleperiod, midiunitynote, midipitchfraction, smptefmt, smpteoffs, numsampleloops, samplerdata = struct.unpack('<iiiiiiiii',chunk.read(36))
+								for i in range(numsampleloops):
+								   cuepointid, type, start, end, fraction, playcount = struct.unpack('<iiiiii',chunk.read(24))
+								   self._loops.append([start,end])
+						chunk.skip()
+				if not self._fmt_chunk_read or not self._data_chunk:
+						raise Error, 'fmt chunk and/or data chunk missing'
 
-        def getmarkers(self):
-                return self._cue
+		def getmarkers(self):
+				return self._cue
 
-        def getloops(self):
-                return self._loops
+		def getloops(self):
+				return self._loops
 
 
 
@@ -141,50 +137,50 @@ class waveread(wave.Wave_read):
 #########################################
 
 class PlayingSound:
-        def __init__(self, sound, note):
-                self.sound = sound
-                self.pos = 0
-                self.fadeoutpos = 0
-                self.isfadeout = False
-                self.note = note
+		def __init__(self, sound, note):
+				self.sound = sound
+				self.pos = 0
+				self.fadeoutpos = 0
+				self.isfadeout = False
+				self.note = note
 
-        def fadeout(self, i):
-                self.isfadeout = True
+		def fadeout(self, i):
+				self.isfadeout = True
 
-        def stop(self):
-                try: playingsounds.remove(self)
-                except: pass
+		def stop(self):
+				try: playingsounds.remove(self)
+				except: pass
 
 class Sound:
-        def __init__(self, filename, midinote, velocity):
-                wf = waveread(filename)
-                self.fname = filename
-                self.midinote = midinote
-                self.velocity = velocity
-                if wf.getloops():
-                        self.loop = wf.getloops()[0][0]
-                        self.nframes = wf.getloops()[0][1] + 2
-                else:
-                        self.loop = -1
-                        self.nframes = wf.getnframes()
+		def __init__(self, filename, midinote, velocity):
+				wf = waveread(filename)
+				self.fname = filename
+				self.midinote = midinote
+				self.velocity = velocity
+				if wf.getloops():
+						self.loop = wf.getloops()[0][0]
+						self.nframes = wf.getloops()[0][1] + 2
+				else:
+						self.loop = -1
+						self.nframes = wf.getnframes()
 
-                self.data = self.frames2array(wf.readframes(self.nframes), wf.getsampwidth(), wf.getnchannels())
+				self.data = self.frames2array(wf.readframes(self.nframes), wf.getsampwidth(), wf.getnchannels())
 
-                wf.close()
+				wf.close()
 
-        def play(self, note):
-                snd = PlayingSound(self, note)
-                playingsounds.append(snd)
-                return snd
+		def play(self, note):
+				snd = PlayingSound(self, note)
+				playingsounds.append(snd)
+				return snd
 
-        def frames2array(self, data, sampwidth, numchan):
-            if sampwidth == 2:
-                npdata = numpy.fromstring(data, dtype = numpy.int16)
-            elif sampwidth == 3:
-                npdata = samplerbox_audio.binary24_to_int16(data, len(data)/3)
-            if numchan == 1:
-                npdata = numpy.repeat(npdata, 2)
-            return npdata
+		def frames2array(self, data, sampwidth, numchan):
+			if sampwidth == 2:
+				npdata = numpy.fromstring(data, dtype = numpy.int16)
+			elif sampwidth == 3:
+				npdata = samplerbox_audio.binary24_to_int16(data, len(data)/3)
+			if numchan == 1: 
+				npdata = numpy.repeat(npdata, 2)
+			return npdata
 
 
 FADEOUT = numpy.linspace(1., 0., FADEOUTLENGTH)            # by default, float64
@@ -204,61 +200,61 @@ globalvolume = 10 ** (-12.0/20)    #  -12dB default global volume
 #########################################
 
 def AudioCallback(in_data, frame_count, time_info, status):
-        global playingsounds
-        rmlist = []
-        b = samplerbox_audio.mixaudiobuffers(playingsounds, rmlist, frame_count, FADEOUT, FADEOUTLENGTH, SPEED)
-        for e in rmlist:
-                try: playingsounds.remove(e)
-                except: pass
-        b /= 8
-        playingsounds = playingsounds[-MAX_POLYPHONY:]
-        odata = (b.astype(numpy.int16)).tostring()
-        return (odata, pyaudio.paContinue)
+		global playingsounds
+		rmlist = []
+		b = samplerbox_audio.mixaudiobuffers(playingsounds, rmlist, frame_count, FADEOUT, FADEOUTLENGTH, SPEED)
+		for e in rmlist:
+				try: playingsounds.remove(e)
+				except: pass
+		b /= 8
+		playingsounds = playingsounds[-MAX_POLYPHONY:]
+		odata = (b.astype(numpy.int16)).tostring()
+		return (odata, pyaudio.paContinue)
 
 def MidiCallback(message, time_stamp):
-        global playingnotes, sustain, sustainplayingnotes
-        global preset
-        messagetype = message[0] >> 4
-        messagechannel = (message[0] & 15) + 1
-        note = message[1] if len(message) > 1 else None
-        midinote = note
-        velocity = message[2] if len(message) > 2 else None
+		global playingnotes, sustain, sustainplayingnotes
+		global preset
+		messagetype = message[0] >> 4
+		messagechannel = (message[0] & 15) + 1
+		note = message[1] if len(message) > 1 else None
+		midinote = note
+		velocity = message[2] if len(message) > 2 else None
 
+	   
 
+		if messagetype == 9 and velocity == 0: messagetype = 8
 
-        if messagetype == 9 and velocity == 0: messagetype = 8
+		if messagetype == 9:    # Note on
+				try:
+				  playingnotes.setdefault(midinote,[]).append(samples[midinote, velocity].play(note))
+				  octave = int (midinote /12)
+				  notename =  NOTES[(midinote % 12)]
+				  print str(notename) + str(octave)
+				except:
+				  pass
 
-        if messagetype == 9:    # Note on
-                try:
-                  playingnotes.setdefault(midinote,[]).append(samples[midinote, velocity].play(note))
-                  octave = int (midinote /12)
-                  notename =  NOTES[(midinote % 12)]
-                  print str(notename) + str(octave)
-                except:
-                  pass
+		elif messagetype == 8:  # Note off
+				if midinote in playingnotes:
+						for n in playingnotes[midinote]:
+								if sustain:
+										sustainplayingnotes.append(n)
+								else:
+										n.fadeout(50)
+						playingnotes[midinote] = []
 
-        elif messagetype == 8:  # Note off
-                if midinote in playingnotes:
-                        for n in playingnotes[midinote]:
-                                if sustain:
-                                        sustainplayingnotes.append(n)
-                                else:
-                                        n.fadeout(50)
-                        playingnotes[midinote] = []
+		elif messagetype == 12: # Program change
+				print 'Program change ' + str(note)
+				preset = note
+				LoadSamples()
 
-        elif messagetype == 12: # Program change
-                print 'Program change ' + str(note)
-                preset = note
-                LoadSamples()
+		elif (messagetype == 11) and (note == 64) and (velocity < 64): # sustain pedal off
+				for n in sustainplayingnotes:
+						n.fadeout(50)
+				sustainplayingnotes = []
+				sustain = False
 
-        elif (messagetype == 11) and (note == 64) and (velocity < 64): # sustain pedal off
-                for n in sustainplayingnotes:
-                        n.fadeout(50)
-                sustainplayingnotes = []
-                sustain = False
-
-        elif (messagetype == 11) and (note == 64) and (velocity >= 64): # sustain pedal on
-                sustain = True
+		elif (messagetype == 11) and (note == 64) and (velocity >= 64): # sustain pedal on
+				sustain = True
 
 
 
@@ -270,124 +266,134 @@ LoadingThread = None
 LoadingInterrupt = False
 
 def LoadSamples():
-        global LoadingThread
-        global LoadingInterrupt
+		global LoadingThread
+		global LoadingInterrupt
 
-        if LoadingThread:
-                LoadingInterrupt = True
-                LoadingThread.join()
-                LoadingThread = None
+		if LoadingThread:
+				LoadingInterrupt = True
+				LoadingThread.join()
+				LoadingThread = None
 
-        LoadingInterrupt = False
-        LoadingThread = threading.Thread(target = ActuallyLoad)
-        LoadingThread.daemon = True
-        LoadingThread.start()
+		LoadingInterrupt = False
+		LoadingThread = threading.Thread(target = ActuallyLoad)
+		LoadingThread.daemon = True
+		LoadingThread.start()
 
 NOTES = ["c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b"]
 
 def ActuallyLoad():
-        global preset
-        global samples
-        global playingsounds
-        display("L%03d" % preset)
-        playingsounds = []
-        samples = {}
-        dirname = next((f for f in os.listdir(SAMPLES_DIR) if f.startswith("%d " % preset)), None)      # or next(glob.iglob("blah*"), None)
-        if dirname:
-                dirname = os.path.join(SAMPLES_DIR, dirname)
-        if not dirname:
-                return
-        definitionfname = os.path.join(dirname, "%d.txt" % preset)                     # parse the sample-set definition file
-        if not os.path.isfile(definitionfname):
-                definitionfname = os.path.join(dirname, "definition.txt")
-        if os.path.isfile(definitionfname):
-                with open(definitionfname, 'r') as definitionfile:
-                        for pattern in definitionfile:
-                                defaultparams = { 'midinote': '0', 'velocity': '127', 'notename': '' }
-                                if len(pattern.split(',')) > 1:
-                                        defaultparams.update(dict([item.split('=') for item in pattern.split(',', 1)[1].replace(' ','').replace('%', '').split(',')]))
-                                pattern = pattern.split(',')[0]
-                                pattern = pattern.replace("%midinote", r"(?P<midinote>\d+)").replace("%velocity", r"(?P<velocity>\d+)").replace("%notename", r"(?P<notename>[A-Ga-g]#?[0-9])").replace("*", r".*").strip()
-                                for fname in os.listdir(dirname):
-                                        if LoadingInterrupt:
-                                                return
-                                        m = re.match(pattern, fname)
-                                        if m:
-                                                info = m.groupdict()
-                                                midinote = int(info.get('midinote', defaultparams['midinote']))
-                                                velocity = int(info.get('velocity', defaultparams['velocity']))
-                                                notename = info.get('notename', defaultparams['notename'])
-                                                if notename: midinote = NOTES.index(notename[:-1].lower()) + (int(notename[-1])) * 12
-                                                samples[midinote, velocity] = Sound(os.path.join(dirname, fname), midinote, velocity)
+		global preset
+		global samples
+		global playingsounds
+		display("L%03d" % preset)
+		playingsounds = []
+		samples = {}
+		dirname = next((f for f in os.listdir(SAMPLES_DIR) if f.startswith("%d " % preset)), None)      # or next(glob.iglob("blah*"), None)
+		if dirname:
+				dirname = os.path.join(SAMPLES_DIR, dirname)
+		if not dirname:
+				return
+		definitionfname = os.path.join(dirname, "%d.txt" % preset)                     # parse the sample-set definition file
+		if not os.path.isfile(definitionfname):
+				definitionfname = os.path.join(dirname, "definition.txt")
+		if os.path.isfile(definitionfname):
+				with open(definitionfname, 'r') as definitionfile:
+						for pattern in definitionfile:
+								defaultparams = { 'midinote': '0', 'velocity': '127', 'notename': '' }
+								if len(pattern.split(',')) > 1:
+										defaultparams.update(dict([item.split('=') for item in pattern.split(',', 1)[1].replace(' ','').replace('%', '').split(',')]))
+								pattern = pattern.split(',')[0]
+								pattern = pattern.replace("%midinote", r"(?P<midinote>\d+)").replace("%velocity", r"(?P<velocity>\d+)").replace("%notename", r"(?P<notename>[A-Ga-g]#?[0-9])").replace("*", r".*").strip()
+								for fname in os.listdir(dirname):
+										if LoadingInterrupt:
+												return
+										m = re.match(pattern, fname)
+										if m:
+												info = m.groupdict()
+												midinote = int(info.get('midinote', defaultparams['midinote']))
+												velocity = int(info.get('velocity', defaultparams['velocity']))
+												notename = info.get('notename', defaultparams['notename'])
+												if notename: midinote = NOTES.index(notename[:-1].lower()) + (int(notename[-1])) * 12
+												samples[midinote, velocity] = Sound(os.path.join(dirname, fname), midinote, velocity)
 
-        else:
-                for midinote in range(0, 127):
-                        if LoadingInterrupt:
-                                return
-                        file = os.path.join(dirname, "%d.wav" % midinote)
-                        if os.path.isfile(file):
-                                samples[midinote, 127] = Sound(file, midinote, 127)
+		else:
+				for midinote in range(0, 127):
+						if LoadingInterrupt:
+								return
+						file = os.path.join(dirname, "%d.wav" % midinote)
+						if os.path.isfile(file):
+								samples[midinote, 127] = Sound(file, midinote, 127)
 
-        initial_keys = set(samples.keys())
-        for midinote in xrange(128):
-                lastvelocity = None
-                for velocity in xrange(128):
-                        if (midinote, velocity) not in initial_keys:
-                                samples[midinote, velocity] = lastvelocity
-                        else:
-                                if not lastvelocity:
-                                        for v in xrange(velocity): samples[midinote, v] = samples[midinote, velocity]
-                                lastvelocity = samples[midinote, velocity]
-                if not lastvelocity:
-                        for velocity in xrange(128):
-                                try: samples[midinote, velocity] = samples[midinote-1, velocity]
-                                except: pass
-        print 'Preset loaded: ' + str(preset)
-        display("%04d" % preset)
+		initial_keys = set(samples.keys())
+		for midinote in xrange(128):
+				lastvelocity = None
+				for velocity in xrange(128):
+						if (midinote, velocity) not in initial_keys:
+								samples[midinote, velocity] = lastvelocity
+						else:
+								if not lastvelocity:
+										for v in xrange(velocity): samples[midinote, v] = samples[midinote, velocity]
+								lastvelocity = samples[midinote, velocity]
+				if not lastvelocity:
+						for velocity in xrange(128):
+								try: samples[midinote, velocity] = samples[midinote-1, velocity]
+								except: pass
+		print 'Preset loaded: ' + str(preset)
+		display("%04d" % preset)
 
 #########################################
 ##  OPEN AUDIO DEVICE
 #########################################
 
 p = pyaudio.PyAudio()
-stream = p.open(format = pyaudio.paInt16, channels = 2, rate = 44100, frames_per_buffer = 512, output = True, input = False, output_device_index = AUDIO_DEVICE_ID, stream_callback = AudioCallback)
-print 'Opened audio: '+ p.get_device_info_by_index(AUDIO_DEVICE_ID)['name']
 
-
+try:
+    stream = p.open(format = pyaudio.paInt16, channels = 2, rate = 44100, frames_per_buffer = 512, output = True, input = False, output_device_index = AUDIO_DEVICE_ID, stream_callback = AudioCallback)
+    print 'Opened audio: '+ p.get_device_info_by_index(AUDIO_DEVICE_ID)['name']
+except:
+	print "Invalid Audio Device ID: " + str(AUDIO_DEVICE_ID)
+	print " "
+	print "Here is a list of audio devices:"
+	for i in range(p.get_device_count()):
+  		dev = p.get_device_info_by_index(i)
+  		# Remove input device (not really useful on a Raspberry Pi)
+  		if dev['maxOutputChannels'] > 0:
+	  		print str(i) + " -- " + dev['name']
+	exit(1)
 
 #########################################
 ##  BUTTONS THREAD (RASPBERRY PI GPIO)
 #########################################
 
 if USE_BUTTONS:
-        import RPi.GPIO as GPIO
+		import RPi.GPIO as GPIO
 
-        lastbuttontime = 0
+		lastbuttontime = 0
 
-        def Buttons():
-                GPIO.setmode(GPIO.BCM)
-                GPIO.setup(18, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-                GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-                global preset, lastbuttontime
-                while True:
-                  now = time.time()
-                  if not GPIO.input(18) and (now - lastbuttontime) > 0.2:
-                        lastbuttontime = now
-                        preset -= 1
-                        if preset < 0: preset = 127
-                        LoadSamples()
+		def Buttons():
+				GPIO.setmode(GPIO.BCM)
+				GPIO.setup(18, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+				GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+				global preset, lastbuttontime
+				while True:
+				  now = time.time()
+				  if not GPIO.input(18) and (now - lastbuttontime) > 0.2:
+						lastbuttontime = now
+						preset -= 1
+						if preset < 0: preset = 127
+						LoadSamples()
 
-                  elif not GPIO.input(17)  and (now - lastbuttontime) > 0.2:
-                        lastbuttontime = now
-                        preset += 1
-                        if preset > 127: preset = 0
-                        LoadSamples()
+				  elif not GPIO.input(17)  and (now - lastbuttontime) > 0.2:
+						lastbuttontime = now
+						preset += 1
+						if preset > 127: preset = 0
+						LoadSamples()
 
-                  time.sleep(0.02)
+				  time.sleep(0.02)
 
-        ButtonsThread = threading.Thread(target = Buttons)
-        ButtonsThread.daemon = True
-        ButtonsThread.start()
+		ButtonsThread = threading.Thread(target = Buttons)
+		ButtonsThread.daemon = True
+		ButtonsThread.start()
 
 
 
@@ -397,26 +403,26 @@ if USE_BUTTONS:
 #########################################
 
 if USE_I2C_7SEGMENTDISPLAY:
-        import smbus
+		import smbus
 
-        bus = smbus.SMBus(1)     # using I2C
+		bus = smbus.SMBus(1)     # using I2C
 
-        def display(s):
-                for k in '\x76\x79\x00' + s:     # position cursor at 0
-                        try:
-                                bus.write_byte(0x71, ord(k))
-                        except:
-                                try: bus.write_byte(0x71, ord(k))
-                                except: pass
-                        time.sleep(0.002)
+		def display(s):
+				for k in '\x76\x79\x00' + s:     # position cursor at 0
+						try:
+								bus.write_byte(0x71, ord(k))
+						except:
+								try: bus.write_byte(0x71, ord(k))
+								except: pass
+						time.sleep(0.002)
 
-        display('----')
-        time.sleep(0.5)
+		display('----')
+		time.sleep(0.5)
 
 else:
 
-        def display(s):
-                pass
+		def display(s):
+				pass
 
 
 
@@ -426,28 +432,28 @@ else:
 #########################################
 
 if USE_SERIALPORT_MIDI:
-        import serial
+		import serial
 
-        ser = serial.Serial('/dev/ttyAMA0', baudrate=38400)       # see hack in /boot/cmline.txt : 38400 is 31250 baud for MIDI!
+		ser = serial.Serial('/dev/ttyAMA0', baudrate=38400)       # see hack in /boot/cmline.txt : 38400 is 31250 baud for MIDI!
 
-        def MidiSerialCallback():
-                message = [0, 0, 0]
-                while True:
-                  i = 0
-                  while i < 3:
-                        data = ord(ser.read(1)) # read a byte
-                        if data >> 7 != 0:
-                          i = 0      # status byte!   this is the beginning of a midi message: http://www.midi.org/techspecs/midimessages.php
-                        message[i] = data
-                        i += 1
-                        if i == 2 and message[0] >> 4 == 12:  # program change: don't wait for a third byte: it has only 2 bytes
-                          message[2] = 0
-                          i = 3
-                  MidiCallback(message, None)
+		def MidiSerialCallback():
+				message = [0, 0, 0]
+				while True:
+				  i = 0
+				  while i < 3:
+						data = ord(ser.read(1)) # read a byte
+						if data >> 7 != 0:
+						  i = 0      # status byte!   this is the beginning of a midi message: http://www.midi.org/techspecs/midimessages.php
+						message[i] = data
+						i += 1
+						if i == 2 and message[0] >> 4 == 12:  # program change: don't wait for a third byte: it has only 2 bytes
+						  message[2] = 0
+						  i = 3
+				  MidiCallback(message, None)
 
-        MidiThread = threading.Thread(target = MidiSerialCallback)
-        MidiThread.daemon = True
-        MidiThread.start()
+		MidiThread = threading.Thread(target = MidiSerialCallback)
+		MidiThread.daemon = True
+		MidiThread.start()
 
 
 
@@ -467,12 +473,12 @@ LoadSamples()
 midi_in = [rtmidi.MidiIn()]
 previous = []
 while True:
-        for port in midi_in[0].ports:
-                if MIDI_DEVICE_ID == port or MIDI_DEVICE_ID == "auto":
-                        if port not in previous and 'Midi Through' not in port:
-                                midi_in.append(rtmidi.MidiIn())
-                                midi_in[-1].callback = MidiCallback
-                                midi_in[-1].open_port(port)
-                                print 'Opened MIDI: '+ port
-                previous = midi_in[0].ports
-                time.sleep(2)
+		for port in midi_in[0].ports:
+				if MIDI_DEVICE_ID == port or MIDI_DEVICE_ID == "auto":
+						if port not in previous and 'Midi Through' not in port:
+								midi_in.append(rtmidi.MidiIn())
+								midi_in[-1].callback = MidiCallback
+								midi_in[-1].open_port(port)
+								print 'Opened MIDI: '+ port
+				previous = midi_in[0].ports
+				time.sleep(2)
