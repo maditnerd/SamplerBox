@@ -20,7 +20,7 @@ SAMPLES_DIR = "..\media"                       # The root directory containing t
 USE_SERIALPORT_MIDI = False             # Set to True to enable MIDI IN via SerialPort (e.g. RaspberryPi's GPIO UART pins)
 USE_I2C_7SEGMENTDISPLAY = False         # Set to True to use a 7-segment display via I2C
 USE_BUTTONS = False                     # Set to True to use momentary buttons (connected to RaspberryPi's GPIO pins) to change preset
-MAX_POLYPHONY = 100                     # This can be set higher, but 100 is a good value
+MAX_POLYPHONY = 80                      # This can be set higher, but 80 is a safe value
 CONFIGFILE = "config.ini"
 preset = 1
 sustain = False
@@ -169,15 +169,13 @@ class Sound:
                 return snd
 
         def frames2array(self, data, sampwidth, numchan):
-                if sampwidth == 2:
-                        npdata = numpy.fromstring(data, dtype = numpy.int16)
-                elif sampwidth == 3:
-                        temp = numpy.zeros((len(data) / 3, 4), dtype='b')
-                        temp[:, 1:] = numpy.frombuffer(data, dtype='b').reshape(-1, 3)
-                        temp2 = temp.view('<i4').flatten() >> 16       # >> 16 because I need to divide by 2**16 to load my data into 16-bit array
-                        npdata = temp2.astype('int16')
-                if numchan == 1: npdata = numpy.repeat(npdata, 2)
-                return npdata
+            if sampwidth == 2:
+                npdata = numpy.fromstring(data, dtype = numpy.int16)
+            elif sampwidth == 3:
+                npdata = samplerbox_audio.binary24_to_int16(data, len(data)/3)
+            if numchan == 1: 
+                npdata = numpy.repeat(npdata, 2)
+            return npdata
 
 FADEOUTLENGTH = 30000
 FADEOUT = numpy.linspace(1., 0., FADEOUTLENGTH)            # by default, float64
@@ -190,6 +188,7 @@ playingnotes = {}
 sustainplayingnotes = []
 
 playingsounds = []
+globalvolume = 10 ** (-12.0/20)    #  -12dB default global volume
 
 #########################################
 ##  AUDIO AND MIDI CALLBACKS
@@ -206,7 +205,6 @@ def AudioCallback(in_data, frame_count, time_info, status):
         playingsounds = playingsounds[-MAX_POLYPHONY:]
         odata = (b.astype(numpy.int16)).tostring()
         return (odata, pyaudio.paContinue)
-
 
 def MidiCallback(message, time_stamp):
         global playingnotes, sustain, sustainplayingnotes
@@ -337,8 +335,6 @@ def ActuallyLoad():
                                 except: pass
         print 'Preset loaded: ' + str(preset)
         display("%04d" % preset)
-
-
 
 #########################################
 ##  OPEN AUDIO DEVICE
