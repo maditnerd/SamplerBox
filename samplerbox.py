@@ -16,7 +16,7 @@
 #########################################
 
 AUDIO_DEVICE_ID = 0                    # change this number to use another soundcard
-SAMPLES_DIR = "..\media"                       # The root directory containing the sample-sets. Example: "/media/" to look for samples on a USB stick / SD card
+SAMPLES_DIR = "."                       # The root directory containing the sample-sets. Example: "/media/" to look for samples on a USB stick / SD card
 USE_SERIALPORT_MIDI = False             # Set to True to enable MIDI IN via SerialPort (e.g. RaspberryPi's GPIO UART pins)
 USE_I2C_7SEGMENTDISPLAY = False         # Set to True to use a 7-segment display via I2C
 USE_BUTTONS = False                     # Set to True to use momentary buttons (connected to RaspberryPi's GPIO pins) to change preset
@@ -48,26 +48,34 @@ import configparser
 ## Configuration Manager
 ## (ini files)
 ##############################
+##############################
+## Configuration Manager
+## (ini files)
+##############################
 def readConfig():
-       global AUDIO_DEVICE_ID
-       global preset
-       global sustain
-       global MAX_POLYPHONY
-       global USE_SERIALPORT_MIDI
-       global MIDI_DEVICE_ID
-       global USE_I2C_7SEGMENTDISPLAY
-       global USE_BUTTONS
-       
-       config = configparser.ConfigParser()
-       config.read('..\media\config.ini')
-       AUDIO_DEVICE_ID = config.getint('Audio','device_id')
-       preset = config.getint('Audio','default_preset')
-       sustain = config.getboolean('Audio','sustain')
-       MAX_POLYPHONY = config.getint('Audio','max_polyphony')
-       USE_SERIALPORT_MIDI = config.getboolean('MIDI','serialport')
-       MIDI_DEVICE_ID = config.get('MIDI','device_id')
-       USE_I2C_7SEGMENTDISPLAY = config.getboolean('GPIO','I2C_7segmentsdisplay')
-       USE_BUTTONS = config.getboolean('GPIO','buttons');
+	try:
+		config = configparser.ConfigParser()
+		config.read(SAMPLES_DIR + "/config.ini")
+
+		global AUDIO_DEVICE_ID
+		global preset
+		global sustain
+		global MAX_POLYPHONY
+		global USE_SERIALPORT_MIDI
+		global MIDI_DEVICE_ID
+		global USE_I2C_7SEGMENTDISPLAY
+		global USE_BUTTONS
+
+		AUDIO_DEVICE_ID = config.getint('Audio','device_id')
+		preset = config.getint('Audio','default_preset')
+		sustain = config.getboolean('Audio','sustain')
+		MAX_POLYPHONY = config.getint('Audio','max_polyphony')
+		USE_SERIALPORT_MIDI = config.getboolean('MIDI','serialport')
+		MIDI_DEVICE_ID = config.get('MIDI','device_id')
+		USE_I2C_7SEGMENTDISPLAY = config.getboolean('GPIO','I2C_7segmentsdisplay')
+		USE_BUTTONS = config.getboolean('GPIO','buttons');
+	except configparser.NoSectionError as e:
+		print "No configuration file founded"
 
 readConfig()
 
@@ -174,7 +182,7 @@ class Sound:
                 npdata = numpy.fromstring(data, dtype = numpy.int16)
             elif sampwidth == 3:
                 npdata = samplerbox_audio.binary24_to_int16(data, len(data)/3)
-            if numchan == 1: 
+            if numchan == 1:
                 npdata = numpy.repeat(npdata, 2)
             return npdata
 
@@ -216,7 +224,7 @@ def MidiCallback(message, time_stamp):
         midinote = note
         velocity = message[2] if len(message) > 2 else None
 
-       
+
 
         if messagetype == 9 and velocity == 0: messagetype = 8
 
