@@ -21,6 +21,7 @@ USE_SERIALPORT_MIDI = False             # Set to True to enable MIDI IN via Seri
 USE_I2C_7SEGMENTDISPLAY = False         # Set to True to use a 7-segment display via I2C
 USE_BUTTONS = False                     # Set to True to use momentary buttons (connected to RaspberryPi's GPIO pins) to change preset
 MAX_POLYPHONY = 80                      # This can be set higher, but 80 is a safe value
+FADEOUTLENGTH = 30000
 CONFIGFILE = "config.ini"
 preset = 1
 sustain = False
@@ -177,7 +178,7 @@ class Sound:
                 npdata = numpy.repeat(npdata, 2)
             return npdata
 
-FADEOUTLENGTH = 30000
+
 FADEOUT = numpy.linspace(1., 0., FADEOUTLENGTH)            # by default, float64
 FADEOUT = numpy.power(FADEOUT, 6)
 FADEOUT = numpy.append(FADEOUT, numpy.zeros(FADEOUTLENGTH, numpy.float32)).astype(numpy.float32)
