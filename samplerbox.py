@@ -428,6 +428,7 @@ if USE_BUTTONS:
 #########################################
 if USE_ADAFRUITLCD:
     import Adafruit_CharLCD as LCD
+    import os
     lcd = LCD.Adafruit_CharLCDPlate()
     lastbuttontime = 0
 
@@ -439,16 +440,22 @@ if USE_ADAFRUITLCD:
 
     def LCDMenu():
         global lastbuttontime
-        global preset, lastbuttontime, globalvolume, globaltranspose, sustain, FADEOUTLENGTH
+        global preset, lastbuttontime, globalvolume, globaltranspose, sustain, samplesList
 
-        # import Adafruit_CharLCD as LCD
-        # lcd = LCD.Adafruit_CharLCDPlate()
-
-        menu = ["Instrument", "Volume", "Sustain", "Transpose", "Fade Out", "Quit"]
+        menu = ["Instrument", "Volume", "Sustain", "Transpose"]
         menuItem = 0
         LastMenuItem = len(menu) - 1
-        # display_text(menu[menuItem] + "\n" + str(preset))
+
         print "Main menu"
+        samplesList = []
+        for samplesDir in os.listdir("/user/samples"):
+            samplesList.append(samplesDir)
+            # samplesSplitted = samplesFiles.split(" ", 2)
+
+        samplesList.sort()
+        display_text(menu[menuItem] + "\n" + samplesList[0])
+
+
         while True:
             now = time.time()
 
@@ -495,7 +502,7 @@ if USE_ADAFRUITLCD:
             time.sleep(0.020)
 
     def raiseValue(item):
-        global preset, lastbuttontime, globalvolume, globaltranspose, sustain, FADEOUTLENGTH
+        global preset, lastbuttontime, globalvolume, globaltranspose, sustain
         if item == "Instrument":
             preset += 1
             if preset > 127:
@@ -508,30 +515,25 @@ if USE_ADAFRUITLCD:
             sustain = True
         elif item == "Transpose":
             globaltranspose = globaltranpose + 1
-        elif item == "Fade Out":
-            FADEOUTLENGTH = FADEOUTLENGTH + 100000
         displayValue(item)
 
-
     def displayValue(item):
-        global preset, lastbuttontime, globalvolume, globaltranspose, sustain, FADEOUTLENGTH
+        global preset, lastbuttontime, globalvolume, globaltranspose, sustain, samplesList
         print item
         if item == "Instrument":
-            value = preset
+            value = samplesList[preset]
         elif item == "Volume":
             value = globalvolume
         elif item == "Sustain":
             value = sustain
         elif item == "Transpose":
             value = globaltranspose
-        elif item == "Fade Out":
-            value = FADEOUTLENGTH
         else:
             value = ""
         display_text(item + "\n" + str(value))
 
     def lowerValue(item):
-        global preset, lastbuttontime, globalvolume, globaltranspose, sustain, FADEOUTLENGTH
+        global preset, lastbuttontime, globalvolume, globaltranspose, sustain
         if item == "Instrument":
             preset -= 1
             if preset < 0:
@@ -544,8 +546,6 @@ if USE_ADAFRUITLCD:
             sustain = False
         elif item == "Transpose":
             globaltranpose = globaltranspose - 1
-        elif item == "Fade Out":
-            FADEOUTLENGTH = FADEOUTLENGTH - 100000
         displayValue(item)
 
     LCDMenuThread = threading.Thread(target=LCDMenu)
