@@ -21,12 +21,13 @@ USE_I2C_7SEGMENTDISPLAY = False         # Set to True to use a 7-segment display
 USE_ADAFRUITLCD = True
 USE_BUTTONS = False                     # Set to True to use momentary buttons (connected to RaspberryPi's GPIO pins) to change preset
 MAX_POLYPHONY = 80                      # This can be set higher, but 80 is a safe value
+LOCAL_CONFIG = 'local_config.py'	# Local config filename
+DEBUG = False                           # Enable to switch verbose logging on
 
-
-#########################################
-# IMPORT
-# MODULES
-#########################################
+# Load local config if available
+import os.path
+if os.path.isfile(LOCAL_CONFIG):
+    execfile(LOCAL_CONFIG)
 
 import wave
 import time
@@ -38,11 +39,8 @@ import threading
 from chunk import Chunk
 import struct
 import rtmidi_python as rtmidi
-import samplerbox_audio
-
-
-
-
+import samplerbox_audio                         # legacy audio (pre RPi-2 models)
+# import samplerbox_audio_neon as samplerbox_audio # ARM NEON instruction set
 
 #########################################
 # SLIGHT MODIFICATION OF PYTHON'S WAVE MODULE
@@ -109,13 +107,14 @@ class waveread(wave.Wave_read):
 
 class PlayingSound:
 
-    def __init__(self, sound, note):
+    def __init__(self, sound, note, velocity):
         self.sound = sound
         self.pos = 0
         self.fadeoutpos = 0
         self.isfadeout = False
         self.note = note
-	# print globalvolume
+        self.velocity = velocity
+
     def fadeout(self, i):
         self.isfadeout = True
 
@@ -144,9 +143,9 @@ class Sound:
 
         wf.close()
 
-    def play(self, note):
-
-        snd = PlayingSound(self, note)
+    def play(self, note, velocity):
+        actual_velocity = 1-globalvelocitysensitivity + (globalvelocitysensitivity * (velocity/127.0))
+        snd = PlayingSound(self, note, actual_velocity)
         playingsounds.append(snd)
         return snd
 
@@ -159,7 +158,7 @@ class Sound:
             npdata = numpy.repeat(npdata, 2)
         return npdata
 
-FADEOUTLENGTH = 60000
+FADEOUTLENGTH = 30000
 FADEOUT = numpy.linspace(1., 0., FADEOUTLENGTH)            # by default, float64
 FADEOUT = numpy.power(FADEOUT, 6)
 FADEOUT = numpy.append(FADEOUT, numpy.zeros(FADEOUTLENGTH, numpy.float32)).astype(numpy.float32)
@@ -170,7 +169,7 @@ playingnotes = {}
 sustainplayingnotes = []
 sustain = False
 playingsounds = []
-globalvolume = 1  # -12dB default global volume
+globalvolume = 10 ** (-12.0/20)  # -12dB default global volume
 globaltranspose = 0
 print globalvolume
 
@@ -184,15 +183,14 @@ def AudioCallback(in_data, frame_count, time_info, status):
     global playingsounds
     rmlist = []
     playingsounds = playingsounds[-MAX_POLYPHONY:]
-    b = samplerbox_audio.mixaudiobuffers(playingsounds, rmlist, frame_count, FADEOUT, FADEOUTLENGTH, SPEED)
+    b = samplerbox_audio.mixaudiobuffers(playingsounds, rmlist, frame_count, FADEOUT, FADEOUTLENGTH, SPEED, globalvolume)
     for e in rmlist:
         try:
             playingsounds.remove(e)
         except:
             pass
-    b *= globalvolume
-    odata = (b.astype(numpy.int16)).tostring()
-
+#    odata = (b.astype(numpy.int16)).tostring()
+    odata = b.tostring()
     return (odata, pyaudio.paContinue)
 
 
@@ -202,9 +200,8 @@ def MidiCallback(message, time_stamp):
     messagetype = message[0] >> 4
     messagechannel = (message[0] & 15) + 1
     note = message[1] if len(message) > 1 else None
-    midinote = note - 12
+    midinote = note
     velocity = message[2] if len(message) > 2 else None
-    print str(midinote) + ":" + str(velocity)
 
     if messagetype == 9 and velocity == 0:
         messagetype = 8
@@ -212,7 +209,7 @@ def MidiCallback(message, time_stamp):
     if messagetype == 9:    # Note on
         midinote += globaltranspose
         try:
-            playingnotes.setdefault(midinote, []).append(samples[midinote, velocity].play(midinote))
+            playingnotes.setdefault(midinote, []).append(samples[midinote, velocity].play(midinote, velocity))
         except:
             pass
 
@@ -272,23 +269,22 @@ def ActuallyLoad():
     global samples
     global playingsounds
     global globalvolume, globaltranspose
+    global globalvelocitysensitivity
     playingsounds = []
     samples = {}
-    #globalvolume = 10 ** (-12.0/20)  # -12dB default global volume
-    globalvolume = 0.6
+    globalvolume = 10 ** (-12.0/20)  # -12dB default global volume
     globaltranspose = 0
-    print globalvolume
+    globalvelocitysensitivity = 0 # default midi velocity sensitivity
+
     basename = next((f for f in os.listdir(SAMPLES_DIR) if f.startswith("%d " % preset)), None)      # or next(glob.iglob("blah*"), None)
     if basename:
         dirname = os.path.join(SAMPLES_DIR, basename)
     if not basename:
         print 'Preset empty: %s' % preset
         display("E%03d" % preset)
-        # display_text("Preset Empty: \n "+str(preset))
         return
     print 'Preset loading: %s (%s)' % (preset, basename)
     display("L%03d" % preset)
-    # display_text("Preset loading: \n" + str(preset))
 
     definitionfname = os.path.join(dirname, "definition.txt")
     if os.path.isfile(definitionfname):
@@ -301,30 +297,29 @@ def ActuallyLoad():
                     if r'%%transpose' in pattern:
                         globaltranspose = int(pattern.split('=')[1].strip())
                         continue
+                    if r'%%velocitysensitivity' in pattern:
+                        globalvelocitysensitivity = float(pattern.split('=')[1].strip())
+                        continue
                     defaultparams = {'midinote': '0', 'velocity': '127', 'notename': ''}
                     if len(pattern.split(',')) > 1:
                         defaultparams.update(dict([item.split('=') for item in pattern.split(',', 1)[1].replace(' ', '').replace('%', '').split(',')]))
                     pattern = pattern.split(',')[0]
                     pattern = re.escape(pattern.strip())
                     pattern = pattern.replace(r"\%midinote", r"(?P<midinote>\d+)").replace(r"\%velocity", r"(?P<velocity>\d+)")\
-                                     .replace(r"\%notename", r"(?P<notename>[A-Ga-g]#?[0-9])").replace(r"\*", r".*?").strip()    # .*? => non greedy
+                                     .replace(r"\%notename", r"(?P<notename>[A-Ga-g]#?[0-9])").replace(r"\*", r".*?").strip()   # .*? => non greedy
                     for fname in os.listdir(dirname):
                         if LoadingInterrupt:
                             return
+                        #print fname
                         m = re.match(pattern, fname)
                         if m:
                             info = m.groupdict()
                             midinote = int(info.get('midinote', defaultparams['midinote']))
-
                             velocity = int(info.get('velocity', defaultparams['velocity']))
                             notename = info.get('notename', defaultparams['notename'])
                             if notename:
                                 midinote = NOTES.index(notename[:-1].lower()) + (int(notename[-1])+2) * 12
-                                midinote = midinote - 12
-                            if velocity == 70:
-                                print str(info["notename"]) + "v" + str(velocity) + ".wav:" + str(midinote)
                             samples[midinote, velocity] = Sound(os.path.join(dirname, fname), midinote, velocity)
-                            
                 except:
                     print "Error in definition file, skipping line %s." % (i+1)
 
@@ -356,11 +351,10 @@ def ActuallyLoad():
     if len(initial_keys) > 0:
         print 'Preset loaded: ' + str(preset)
         display("%04d" % preset)
-        #display_text("Preset loaded \n" + str(preset))
-    else: 
+    else:
         print 'Preset empty: ' + str(preset)
         display("E%03d" % preset)
-        # display_text("Preset empty \n" + str(preset))
+
 
 
 #########################################
@@ -440,11 +434,12 @@ if USE_ADAFRUITLCD:
 
     def LCDMenu():
         global lastbuttontime
-        global preset, lastbuttontime, globalvolume, globaltranspose, sustain, samplesList
+        global preset, lastbuttontime, globalvolume, globaltranspose, sustain, samplesList, nbInstruments
 
-        menu = ["Instrument", "Volume", "Sustain", "Transpose"]
+        menu = ["Instrument", "Volume", "Sustain", "Transpose", "Quit" ]
         menuItem = 0
         LastMenuItem = len(menu) - 1
+        
 
         print "Main menu"
         samplesList = []
@@ -453,6 +448,7 @@ if USE_ADAFRUITLCD:
             # samplesSplitted = samplesFiles.split(" ", 2)
 
         samplesList.sort()
+        nbInstruments = len(samplesList)
         display_text(menu[menuItem] + "\n" + samplesList[0])
 
 
@@ -488,6 +484,7 @@ if USE_ADAFRUITLCD:
 
             if lcd.is_pressed(LCD.DOWN) and (now - lastbuttontime) > 0.2:
                 lastbuttontime = now
+                
                 if menu[menuItem] == "Quit":
                     os.system("reboot")
                 else:
@@ -496,21 +493,22 @@ if USE_ADAFRUITLCD:
             if lcd.is_pressed(LCD.SELECT) and (now - lastbuttontime) > 0.2:
                 lastbuttontime = now
                 if menu[menuItem] == "Quit":
-                    os.system("halt")
+                    os.system("poweroff")
                 else:
                     LoadSamples()
             time.sleep(0.020)
 
     def raiseValue(item):
-        global preset, lastbuttontime, globalvolume, globaltranspose, sustain
+        global preset, lastbuttontime, globalvolume, globaltranspose, sustain, nbInstruments
         if item == "Instrument":
-            preset += 1
-            if preset > 127:
-                preset = 0
-            LoadSamples()
+            if preset < nbInstruments - 1:
+                preset += 1
+                print "preset:" + str(preset)
+                print "instru:" + str(nbInstruments)
+                LoadSamples()
         elif item == "Volume":
             if globalvolume < 2:
-                globalvolume = globalvolume + 0.01
+                globalvolume = globalvolume + 0.1
         elif item == "Sustain":
             sustain = True
         elif item == "Transpose":
@@ -535,13 +533,12 @@ if USE_ADAFRUITLCD:
     def lowerValue(item):
         global preset, lastbuttontime, globalvolume, globaltranspose, sustain
         if item == "Instrument":
-            preset -= 1
-            if preset < 0:
-                preset = 127
-            LoadSamples()
+            if preset > 0:
+                preset -= 1
+                LoadSamples()           
         elif item == "Volume":
             if globalvolume > 0:
-                globalvolume = globalvolume - 0.01
+                globalvolume = globalvolume - 0.1
         elif item == "Sustain":
             sustain = False
         elif item == "Transpose":

@@ -830,6 +830,12 @@ static CYTHON_INLINE int __Pyx_PyObject_SetAttrStr(PyObject* obj, PyObject* attr
 #define __Pyx_PyObject_SetAttrStr(o,n,v) PyObject_SetAttr(o,n,v)
 #endif
 
+#if CYTHON_COMPILING_IN_CPYTHON
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallMethO(PyObject *func, PyObject *arg);
+#endif
+
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallOneArg(PyObject *func, PyObject *arg);
+
 static CYTHON_INLINE void __Pyx_ErrRestore(PyObject *type, PyObject *value, PyObject *tb);
 static CYTHON_INLINE void __Pyx_ErrFetch(PyObject **type, PyObject **value, PyObject **tb);
 
@@ -1020,7 +1026,7 @@ int __pyx_module_is_main_samplerbox_audio = 0;
 static PyObject *__pyx_builtin_range;
 static PyObject *__pyx_builtin_ValueError;
 static PyObject *__pyx_builtin_RuntimeError;
-static PyObject *__pyx_pf_16samplerbox_audio_mixaudiobuffers(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_playingsounds, PyObject *__pyx_v_rmlist, int __pyx_v_frame_count, PyArrayObject *__pyx_v_FADEOUT, int __pyx_v_FADEOUTLENGTH, PyArrayObject *__pyx_v_SPEED); /* proto */
+static PyObject *__pyx_pf_16samplerbox_audio_mixaudiobuffers(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_playingsounds, PyObject *__pyx_v_rmlist, int __pyx_v_frame_count, PyArrayObject *__pyx_v_FADEOUT, int __pyx_v_FADEOUTLENGTH, PyArrayObject *__pyx_v_SPEED, double __pyx_v_GLOBALVOLUME); /* proto */
 static PyObject *__pyx_pf_16samplerbox_audio_2binary24_to_int16(CYTHON_UNUSED PyObject *__pyx_self, char *__pyx_v_data, int __pyx_v_length); /* proto */
 static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info, int __pyx_v_flags); /* proto */
 static void __pyx_pf_5numpy_7ndarray_2__releasebuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info); /* proto */
@@ -1064,6 +1070,7 @@ static char __pyx_k_range[] = "range";
 static char __pyx_k_sound[] = "sound";
 static char __pyx_k_speed[] = "speed";
 static char __pyx_k_zeros[] = "zeros";
+static char __pyx_k_astype[] = "astype";
 static char __pyx_k_import[] = "__import__";
 static char __pyx_k_length[] = "length";
 static char __pyx_k_rmlist[] = "rmlist";
@@ -1073,10 +1080,13 @@ static char __pyx_k_float32[] = "float32";
 static char __pyx_k_looppos[] = "looppos";
 static char __pyx_k_nframes[] = "nframes";
 static char __pyx_k_midinote[] = "midinote";
+static char __pyx_k_velocity[] = "velocity";
 static char __pyx_k_isfadeout[] = "isfadeout";
 static char __pyx_k_ValueError[] = "ValueError";
 static char __pyx_k_fadeoutpos[] = "fadeoutpos";
+static char __pyx_k_multiplier[] = "multiplier";
 static char __pyx_k_frame_count[] = "frame_count";
+static char __pyx_k_GLOBALVOLUME[] = "GLOBALVOLUME";
 static char __pyx_k_RuntimeError[] = "RuntimeError";
 static char __pyx_k_FADEOUTLENGTH[] = "FADEOUTLENGTH";
 static char __pyx_k_playingsounds[] = "playingsounds";
@@ -1094,11 +1104,13 @@ static PyObject *__pyx_n_s_FADEOUT;
 static PyObject *__pyx_n_s_FADEOUTLENGTH;
 static PyObject *__pyx_kp_u_Format_string_allocated_too_shor;
 static PyObject *__pyx_kp_u_Format_string_allocated_too_shor_2;
+static PyObject *__pyx_n_s_GLOBALVOLUME;
 static PyObject *__pyx_n_s_N;
 static PyObject *__pyx_kp_u_Non_native_byte_order_not_suppor;
 static PyObject *__pyx_n_s_RuntimeError;
 static PyObject *__pyx_n_s_SPEED;
 static PyObject *__pyx_n_s_ValueError;
+static PyObject *__pyx_n_s_astype;
 static PyObject *__pyx_n_s_b;
 static PyObject *__pyx_n_s_bb;
 static PyObject *__pyx_n_s_binary24_to_int16;
@@ -1121,6 +1133,7 @@ static PyObject *__pyx_n_s_looppos;
 static PyObject *__pyx_n_s_main;
 static PyObject *__pyx_n_s_midinote;
 static PyObject *__pyx_n_s_mixaudiobuffers;
+static PyObject *__pyx_n_s_multiplier;
 static PyObject *__pyx_kp_u_ndarray_is_not_C_contiguous;
 static PyObject *__pyx_kp_u_ndarray_is_not_Fortran_contiguou;
 static PyObject *__pyx_n_s_newsz;
@@ -1139,6 +1152,7 @@ static PyObject *__pyx_n_s_sound;
 static PyObject *__pyx_n_s_speed;
 static PyObject *__pyx_n_s_test;
 static PyObject *__pyx_kp_u_unknown_dtype_code_in_numpy_pxd;
+static PyObject *__pyx_n_s_velocity;
 static PyObject *__pyx_n_s_z;
 static PyObject *__pyx_n_s_zeros;
 static PyObject *__pyx_n_s_zz;
@@ -1156,9 +1170,9 @@ static PyObject *__pyx_codeobj__10;
 /* "samplerbox_audio.pyx":17
  * cimport numpy
  * 
- * def mixaudiobuffers(list playingsounds, list rmlist, int frame_count, numpy.ndarray FADEOUT, int FADEOUTLENGTH, numpy.ndarray SPEED):             # <<<<<<<<<<<<<<
+ * def mixaudiobuffers(list playingsounds, list rmlist, int frame_count, numpy.ndarray FADEOUT, int FADEOUTLENGTH, numpy.ndarray SPEED, double GLOBALVOLUME):             # <<<<<<<<<<<<<<
  *     cdef int i, ii, k, l, N, length, looppos, fadeoutpos
- *     cdef float speed, newsz, pos, j
+ *     cdef float speed, newsz, pos, j, velocity
  */
 
 /* Python wrapper */
@@ -1171,6 +1185,7 @@ static PyObject *__pyx_pw_16samplerbox_audio_1mixaudiobuffers(PyObject *__pyx_se
   PyArrayObject *__pyx_v_FADEOUT = 0;
   int __pyx_v_FADEOUTLENGTH;
   PyArrayObject *__pyx_v_SPEED = 0;
+  double __pyx_v_GLOBALVOLUME;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
@@ -1178,12 +1193,13 @@ static PyObject *__pyx_pw_16samplerbox_audio_1mixaudiobuffers(PyObject *__pyx_se
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("mixaudiobuffers (wrapper)", 0);
   {
-    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_playingsounds,&__pyx_n_s_rmlist,&__pyx_n_s_frame_count,&__pyx_n_s_FADEOUT,&__pyx_n_s_FADEOUTLENGTH,&__pyx_n_s_SPEED,0};
-    PyObject* values[6] = {0,0,0,0,0,0};
+    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_playingsounds,&__pyx_n_s_rmlist,&__pyx_n_s_frame_count,&__pyx_n_s_FADEOUT,&__pyx_n_s_FADEOUTLENGTH,&__pyx_n_s_SPEED,&__pyx_n_s_GLOBALVOLUME,0};
+    PyObject* values[7] = {0,0,0,0,0,0,0};
     if (unlikely(__pyx_kwds)) {
       Py_ssize_t kw_args;
       const Py_ssize_t pos_args = PyTuple_GET_SIZE(__pyx_args);
       switch (pos_args) {
+        case  7: values[6] = PyTuple_GET_ITEM(__pyx_args, 6);
         case  6: values[5] = PyTuple_GET_ITEM(__pyx_args, 5);
         case  5: values[4] = PyTuple_GET_ITEM(__pyx_args, 4);
         case  4: values[3] = PyTuple_GET_ITEM(__pyx_args, 3);
@@ -1201,33 +1217,38 @@ static PyObject *__pyx_pw_16samplerbox_audio_1mixaudiobuffers(PyObject *__pyx_se
         case  1:
         if (likely((values[1] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_rmlist)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("mixaudiobuffers", 1, 6, 6, 1); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+          __Pyx_RaiseArgtupleInvalid("mixaudiobuffers", 1, 7, 7, 1); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
         }
         case  2:
         if (likely((values[2] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_frame_count)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("mixaudiobuffers", 1, 6, 6, 2); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+          __Pyx_RaiseArgtupleInvalid("mixaudiobuffers", 1, 7, 7, 2); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
         }
         case  3:
         if (likely((values[3] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_FADEOUT)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("mixaudiobuffers", 1, 6, 6, 3); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+          __Pyx_RaiseArgtupleInvalid("mixaudiobuffers", 1, 7, 7, 3); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
         }
         case  4:
         if (likely((values[4] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_FADEOUTLENGTH)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("mixaudiobuffers", 1, 6, 6, 4); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+          __Pyx_RaiseArgtupleInvalid("mixaudiobuffers", 1, 7, 7, 4); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
         }
         case  5:
         if (likely((values[5] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_SPEED)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("mixaudiobuffers", 1, 6, 6, 5); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+          __Pyx_RaiseArgtupleInvalid("mixaudiobuffers", 1, 7, 7, 5); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+        }
+        case  6:
+        if (likely((values[6] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_GLOBALVOLUME)) != 0)) kw_args--;
+        else {
+          __Pyx_RaiseArgtupleInvalid("mixaudiobuffers", 1, 7, 7, 6); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
         }
       }
       if (unlikely(kw_args > 0)) {
         if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "mixaudiobuffers") < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       }
-    } else if (PyTuple_GET_SIZE(__pyx_args) != 6) {
+    } else if (PyTuple_GET_SIZE(__pyx_args) != 7) {
       goto __pyx_L5_argtuple_error;
     } else {
       values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
@@ -1236,6 +1257,7 @@ static PyObject *__pyx_pw_16samplerbox_audio_1mixaudiobuffers(PyObject *__pyx_se
       values[3] = PyTuple_GET_ITEM(__pyx_args, 3);
       values[4] = PyTuple_GET_ITEM(__pyx_args, 4);
       values[5] = PyTuple_GET_ITEM(__pyx_args, 5);
+      values[6] = PyTuple_GET_ITEM(__pyx_args, 6);
     }
     __pyx_v_playingsounds = ((PyObject*)values[0]);
     __pyx_v_rmlist = ((PyObject*)values[1]);
@@ -1243,10 +1265,11 @@ static PyObject *__pyx_pw_16samplerbox_audio_1mixaudiobuffers(PyObject *__pyx_se
     __pyx_v_FADEOUT = ((PyArrayObject *)values[3]);
     __pyx_v_FADEOUTLENGTH = __Pyx_PyInt_As_int(values[4]); if (unlikely((__pyx_v_FADEOUTLENGTH == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
     __pyx_v_SPEED = ((PyArrayObject *)values[5]);
+    __pyx_v_GLOBALVOLUME = __pyx_PyFloat_AsDouble(values[6]); if (unlikely((__pyx_v_GLOBALVOLUME == (double)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("mixaudiobuffers", 1, 6, 6, PyTuple_GET_SIZE(__pyx_args)); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+  __Pyx_RaiseArgtupleInvalid("mixaudiobuffers", 1, 7, 7, PyTuple_GET_SIZE(__pyx_args)); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
   __pyx_L3_error:;
   __Pyx_AddTraceback("samplerbox_audio.mixaudiobuffers", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -1256,7 +1279,7 @@ static PyObject *__pyx_pw_16samplerbox_audio_1mixaudiobuffers(PyObject *__pyx_se
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_rmlist), (&PyList_Type), 1, "rmlist", 1))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_FADEOUT), __pyx_ptype_5numpy_ndarray, 1, "FADEOUT", 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_SPEED), __pyx_ptype_5numpy_ndarray, 1, "SPEED", 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_r = __pyx_pf_16samplerbox_audio_mixaudiobuffers(__pyx_self, __pyx_v_playingsounds, __pyx_v_rmlist, __pyx_v_frame_count, __pyx_v_FADEOUT, __pyx_v_FADEOUTLENGTH, __pyx_v_SPEED);
+  __pyx_r = __pyx_pf_16samplerbox_audio_mixaudiobuffers(__pyx_self, __pyx_v_playingsounds, __pyx_v_rmlist, __pyx_v_frame_count, __pyx_v_FADEOUT, __pyx_v_FADEOUTLENGTH, __pyx_v_SPEED, __pyx_v_GLOBALVOLUME);
 
   /* function exit code */
   goto __pyx_L0;
@@ -1267,7 +1290,7 @@ static PyObject *__pyx_pw_16samplerbox_audio_1mixaudiobuffers(PyObject *__pyx_se
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_16samplerbox_audio_mixaudiobuffers(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_playingsounds, PyObject *__pyx_v_rmlist, int __pyx_v_frame_count, PyArrayObject *__pyx_v_FADEOUT, int __pyx_v_FADEOUTLENGTH, PyArrayObject *__pyx_v_SPEED) {
+static PyObject *__pyx_pf_16samplerbox_audio_mixaudiobuffers(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_playingsounds, PyObject *__pyx_v_rmlist, int __pyx_v_frame_count, PyArrayObject *__pyx_v_FADEOUT, int __pyx_v_FADEOUTLENGTH, PyArrayObject *__pyx_v_SPEED, double __pyx_v_GLOBALVOLUME) {
   int __pyx_v_i;
   int __pyx_v_ii;
   int __pyx_v_k;
@@ -1279,11 +1302,13 @@ static PyObject *__pyx_pf_16samplerbox_audio_mixaudiobuffers(CYTHON_UNUSED PyObj
   CYTHON_UNUSED float __pyx_v_newsz;
   float __pyx_v_pos;
   float __pyx_v_j;
+  float __pyx_v_velocity;
   PyArrayObject *__pyx_v_b = 0;
   float *__pyx_v_bb;
   PyArrayObject *__pyx_v_z = 0;
   short *__pyx_v_zz;
   float *__pyx_v_fadeout;
+  double __pyx_v_multiplier;
   PyObject *__pyx_v_snd = NULL;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
@@ -1308,7 +1333,7 @@ static PyObject *__pyx_pf_16samplerbox_audio_mixaudiobuffers(CYTHON_UNUSED PyObj
 
   /* "samplerbox_audio.pyx":20
  *     cdef int i, ii, k, l, N, length, looppos, fadeoutpos
- *     cdef float speed, newsz, pos, j
+ *     cdef float speed, newsz, pos, j, velocity
  *     cdef numpy.ndarray b = numpy.zeros(2 * frame_count, numpy.float32)      # output buffer             # <<<<<<<<<<<<<<
  *     cdef float* bb = <float *> (b.data)                                     # and its pointer
  *     cdef numpy.ndarray z
@@ -1357,7 +1382,7 @@ static PyObject *__pyx_pf_16samplerbox_audio_mixaudiobuffers(CYTHON_UNUSED PyObj
   __pyx_t_1 = 0;
 
   /* "samplerbox_audio.pyx":21
- *     cdef float speed, newsz, pos, j
+ *     cdef float speed, newsz, pos, j, velocity
  *     cdef numpy.ndarray b = numpy.zeros(2 * frame_count, numpy.float32)      # output buffer
  *     cdef float* bb = <float *> (b.data)                                     # and its pointer             # <<<<<<<<<<<<<<
  *     cdef numpy.ndarray z
@@ -1369,13 +1394,13 @@ static PyObject *__pyx_pf_16samplerbox_audio_mixaudiobuffers(CYTHON_UNUSED PyObj
  *     cdef numpy.ndarray z
  *     cdef short* zz
  *     cdef float* fadeout = <float *> (FADEOUT.data)             # <<<<<<<<<<<<<<
+ *     cdef double multiplier
  * 
- *     for snd in playingsounds:
  */
   __pyx_v_fadeout = ((float *)__pyx_v_FADEOUT->data);
 
-  /* "samplerbox_audio.pyx":26
- *     cdef float* fadeout = <float *> (FADEOUT.data)
+  /* "samplerbox_audio.pyx":27
+ *     cdef double multiplier
  * 
  *     for snd in playingsounds:             # <<<<<<<<<<<<<<
  *         pos = snd.pos
@@ -1383,103 +1408,122 @@ static PyObject *__pyx_pf_16samplerbox_audio_mixaudiobuffers(CYTHON_UNUSED PyObj
  */
   if (unlikely(__pyx_v_playingsounds == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 26; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    {__pyx_filename = __pyx_f[0]; __pyx_lineno = 27; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
   __pyx_t_1 = __pyx_v_playingsounds; __Pyx_INCREF(__pyx_t_1); __pyx_t_6 = 0;
   for (;;) {
     if (__pyx_t_6 >= PyList_GET_SIZE(__pyx_t_1)) break;
     #if CYTHON_COMPILING_IN_CPYTHON
-    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_6); __Pyx_INCREF(__pyx_t_3); __pyx_t_6++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 26; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_6); __Pyx_INCREF(__pyx_t_3); __pyx_t_6++; if (unlikely(0 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 27; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     #else
-    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_6); __pyx_t_6++; if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 26; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = PySequence_ITEM(__pyx_t_1, __pyx_t_6); __pyx_t_6++; if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 27; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     #endif
     __Pyx_XDECREF_SET(__pyx_v_snd, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "samplerbox_audio.pyx":27
+    /* "samplerbox_audio.pyx":28
  * 
  *     for snd in playingsounds:
  *         pos = snd.pos             # <<<<<<<<<<<<<<
  *         fadeoutpos = snd.fadeoutpos
- *         looppos = snd.sound.loop
+ *         velocity = snd.velocity * GLOBALVOLUME
  */
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_pos); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 27; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_pos); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_8 = __pyx_PyFloat_AsFloat(__pyx_t_3); if (unlikely((__pyx_t_8 == (float)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 27; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_8 = __pyx_PyFloat_AsFloat(__pyx_t_3); if (unlikely((__pyx_t_8 == (float)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_v_pos = __pyx_t_8;
 
-    /* "samplerbox_audio.pyx":28
+    /* "samplerbox_audio.pyx":29
  *     for snd in playingsounds:
  *         pos = snd.pos
  *         fadeoutpos = snd.fadeoutpos             # <<<<<<<<<<<<<<
+ *         velocity = snd.velocity * GLOBALVOLUME
  *         looppos = snd.sound.loop
- *         length = snd.sound.nframes
  */
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_fadeoutpos); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_fadeoutpos); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_9 = __Pyx_PyInt_As_int(__pyx_t_3); if (unlikely((__pyx_t_9 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 28; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_9 = __Pyx_PyInt_As_int(__pyx_t_3); if (unlikely((__pyx_t_9 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_v_fadeoutpos = __pyx_t_9;
 
-    /* "samplerbox_audio.pyx":29
+    /* "samplerbox_audio.pyx":30
  *         pos = snd.pos
  *         fadeoutpos = snd.fadeoutpos
+ *         velocity = snd.velocity * GLOBALVOLUME             # <<<<<<<<<<<<<<
+ *         looppos = snd.sound.loop
+ *         length = snd.sound.nframes
+ */
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_velocity); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_t_7 = PyFloat_FromDouble(__pyx_v_GLOBALVOLUME); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_7);
+    __pyx_t_5 = PyNumber_Multiply(__pyx_t_3, __pyx_t_7); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_5);
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+    __pyx_t_8 = __pyx_PyFloat_AsFloat(__pyx_t_5); if (unlikely((__pyx_t_8 == (float)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+    __pyx_v_velocity = __pyx_t_8;
+
+    /* "samplerbox_audio.pyx":31
+ *         fadeoutpos = snd.fadeoutpos
+ *         velocity = snd.velocity * GLOBALVOLUME
  *         looppos = snd.sound.loop             # <<<<<<<<<<<<<<
  *         length = snd.sound.nframes
  *         speed = SPEED[snd.note - snd.sound.midinote]
  */
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_sound); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_loop); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_sound); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_5);
+    __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_n_s_loop); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_7);
-    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __pyx_t_9 = __Pyx_PyInt_As_int(__pyx_t_7); if (unlikely((__pyx_t_9 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 29; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+    __pyx_t_9 = __Pyx_PyInt_As_int(__pyx_t_7); if (unlikely((__pyx_t_9 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     __pyx_v_looppos = __pyx_t_9;
 
-    /* "samplerbox_audio.pyx":30
- *         fadeoutpos = snd.fadeoutpos
+    /* "samplerbox_audio.pyx":32
+ *         velocity = snd.velocity * GLOBALVOLUME
  *         looppos = snd.sound.loop
  *         length = snd.sound.nframes             # <<<<<<<<<<<<<<
  *         speed = SPEED[snd.note - snd.sound.midinote]
  *         newsz = frame_count * speed
  */
-    __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_sound); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_sound); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 32; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_7);
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_n_s_nframes); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_n_s_nframes); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 32; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_5);
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-    __pyx_t_9 = __Pyx_PyInt_As_int(__pyx_t_3); if (unlikely((__pyx_t_9 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 30; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    __pyx_t_9 = __Pyx_PyInt_As_int(__pyx_t_5); if (unlikely((__pyx_t_9 == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 32; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     __pyx_v_length = __pyx_t_9;
 
-    /* "samplerbox_audio.pyx":31
+    /* "samplerbox_audio.pyx":33
  *         looppos = snd.sound.loop
  *         length = snd.sound.nframes
  *         speed = SPEED[snd.note - snd.sound.midinote]             # <<<<<<<<<<<<<<
  *         newsz = frame_count * speed
  *         z = snd.sound.data
  */
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_note); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_note); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_5);
+    __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_sound); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_7);
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_n_s_midinote); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_sound); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_GOTREF(__pyx_t_7);
-    __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_7, __pyx_n_s_midinote); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_GOTREF(__pyx_t_5);
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-    __pyx_t_7 = PyNumber_Subtract(__pyx_t_3, __pyx_t_5); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_7 = PyNumber_Subtract(__pyx_t_5, __pyx_t_3); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_7);
+    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-    __pyx_t_5 = PyObject_GetItem(((PyObject *)__pyx_v_SPEED), __pyx_t_7); if (unlikely(__pyx_t_5 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-    __Pyx_GOTREF(__pyx_t_5);
+    __pyx_t_3 = PyObject_GetItem(((PyObject *)__pyx_v_SPEED), __pyx_t_7); if (unlikely(__pyx_t_3 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+    __Pyx_GOTREF(__pyx_t_3);
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-    __pyx_t_8 = __pyx_PyFloat_AsFloat(__pyx_t_5); if (unlikely((__pyx_t_8 == (float)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 31; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+    __pyx_t_8 = __pyx_PyFloat_AsFloat(__pyx_t_3); if (unlikely((__pyx_t_8 == (float)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __pyx_v_speed = __pyx_t_8;
 
-    /* "samplerbox_audio.pyx":32
+    /* "samplerbox_audio.pyx":34
  *         length = snd.sound.nframes
  *         speed = SPEED[snd.note - snd.sound.midinote]
  *         newsz = frame_count * speed             # <<<<<<<<<<<<<<
@@ -1488,23 +1532,23 @@ static PyObject *__pyx_pf_16samplerbox_audio_mixaudiobuffers(CYTHON_UNUSED PyObj
  */
     __pyx_v_newsz = (__pyx_v_frame_count * __pyx_v_speed);
 
-    /* "samplerbox_audio.pyx":33
+    /* "samplerbox_audio.pyx":35
  *         speed = SPEED[snd.note - snd.sound.midinote]
  *         newsz = frame_count * speed
  *         z = snd.sound.data             # <<<<<<<<<<<<<<
  *         zz = <short *> (z.data)
  * 
  */
-    __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_sound); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_GOTREF(__pyx_t_5);
-    __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_n_s_data); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_sound); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 35; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_data); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 35; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_7);
-    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-    if (!(likely(((__pyx_t_7) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_7, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 33; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    if (!(likely(((__pyx_t_7) == Py_None) || likely(__Pyx_TypeTest(__pyx_t_7, __pyx_ptype_5numpy_ndarray))))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 35; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_XDECREF_SET(__pyx_v_z, ((PyArrayObject *)__pyx_t_7));
     __pyx_t_7 = 0;
 
-    /* "samplerbox_audio.pyx":34
+    /* "samplerbox_audio.pyx":36
  *         newsz = frame_count * speed
  *         z = snd.sound.data
  *         zz = <short *> (z.data)             # <<<<<<<<<<<<<<
@@ -1513,7 +1557,7 @@ static PyObject *__pyx_pf_16samplerbox_audio_mixaudiobuffers(CYTHON_UNUSED PyObj
  */
     __pyx_v_zz = ((short *)__pyx_v_z->data);
 
-    /* "samplerbox_audio.pyx":36
+    /* "samplerbox_audio.pyx":38
  *         zz = <short *> (z.data)
  * 
  *         N = frame_count             # <<<<<<<<<<<<<<
@@ -1522,7 +1566,7 @@ static PyObject *__pyx_pf_16samplerbox_audio_mixaudiobuffers(CYTHON_UNUSED PyObj
  */
     __pyx_v_N = __pyx_v_frame_count;
 
-    /* "samplerbox_audio.pyx":38
+    /* "samplerbox_audio.pyx":40
  *         N = frame_count
  * 
  *         if (pos + frame_count * speed > length - 4) and (looppos == -1):             # <<<<<<<<<<<<<<
@@ -1540,7 +1584,7 @@ static PyObject *__pyx_pf_16samplerbox_audio_mixaudiobuffers(CYTHON_UNUSED PyObj
     __pyx_L6_bool_binop_done:;
     if (__pyx_t_10) {
 
-      /* "samplerbox_audio.pyx":39
+      /* "samplerbox_audio.pyx":41
  * 
  *         if (pos + frame_count * speed > length - 4) and (looppos == -1):
  *             rmlist.append(snd)             # <<<<<<<<<<<<<<
@@ -1549,16 +1593,16 @@ static PyObject *__pyx_pf_16samplerbox_audio_mixaudiobuffers(CYTHON_UNUSED PyObj
  */
       if (unlikely(__pyx_v_rmlist == Py_None)) {
         PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%s'", "append");
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 39; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 41; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
-      __pyx_t_12 = __Pyx_PyList_Append(__pyx_v_rmlist, __pyx_v_snd); if (unlikely(__pyx_t_12 == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 39; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __pyx_t_12 = __Pyx_PyList_Append(__pyx_v_rmlist, __pyx_v_snd); if (unlikely(__pyx_t_12 == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 41; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
 
-      /* "samplerbox_audio.pyx":40
+      /* "samplerbox_audio.pyx":42
  *         if (pos + frame_count * speed > length - 4) and (looppos == -1):
  *             rmlist.append(snd)
  *             N = <int> ((length - 4 - pos) / speed)             # <<<<<<<<<<<<<<
  * 
- *         if snd.isfadeout:
+ *         multiplier = velocity
  */
       __pyx_t_8 = ((__pyx_v_length - 4) - __pyx_v_pos);
       if (unlikely(__pyx_v_speed == 0)) {
@@ -1569,353 +1613,256 @@ static PyObject *__pyx_pf_16samplerbox_audio_mixaudiobuffers(CYTHON_UNUSED PyObj
         #ifdef WITH_THREAD
         PyGILState_Release(__pyx_gilstate_save);
         #endif
-        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 40; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        {__pyx_filename = __pyx_f[0]; __pyx_lineno = 42; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
       }
       __pyx_v_N = ((int)(__pyx_t_8 / __pyx_v_speed));
       goto __pyx_L5;
     }
     __pyx_L5:;
 
-    /* "samplerbox_audio.pyx":42
+    /* "samplerbox_audio.pyx":44
  *             N = <int> ((length - 4 - pos) / speed)
+ * 
+ *         multiplier = velocity             # <<<<<<<<<<<<<<
+ * 
+ *         ii = 0
+ */
+    __pyx_v_multiplier = __pyx_v_velocity;
+
+    /* "samplerbox_audio.pyx":46
+ *         multiplier = velocity
+ * 
+ *         ii = 0             # <<<<<<<<<<<<<<
+ *         for i in range(N):
+ *             j = pos + ii * speed
+ */
+    __pyx_v_ii = 0;
+
+    /* "samplerbox_audio.pyx":47
+ * 
+ *         ii = 0
+ *         for i in range(N):             # <<<<<<<<<<<<<<
+ *             j = pos + ii * speed
+ *             ii += 1
+ */
+    __pyx_t_9 = __pyx_v_N;
+    for (__pyx_t_13 = 0; __pyx_t_13 < __pyx_t_9; __pyx_t_13+=1) {
+      __pyx_v_i = __pyx_t_13;
+
+      /* "samplerbox_audio.pyx":48
+ *         ii = 0
+ *         for i in range(N):
+ *             j = pos + ii * speed             # <<<<<<<<<<<<<<
+ *             ii += 1
+ *             k = <int> j
+ */
+      __pyx_v_j = (__pyx_v_pos + (__pyx_v_ii * __pyx_v_speed));
+
+      /* "samplerbox_audio.pyx":49
+ *         for i in range(N):
+ *             j = pos + ii * speed
+ *             ii += 1             # <<<<<<<<<<<<<<
+ *             k = <int> j
+ *             if k > length - 2:
+ */
+      __pyx_v_ii = (__pyx_v_ii + 1);
+
+      /* "samplerbox_audio.pyx":50
+ *             j = pos + ii * speed
+ *             ii += 1
+ *             k = <int> j             # <<<<<<<<<<<<<<
+ *             if k > length - 2:
+ *                 pos = looppos + 1
+ */
+      __pyx_v_k = ((int)__pyx_v_j);
+
+      /* "samplerbox_audio.pyx":51
+ *             ii += 1
+ *             k = <int> j
+ *             if k > length - 2:             # <<<<<<<<<<<<<<
+ *                 pos = looppos + 1
+ *                 snd.pos = pos
+ */
+      __pyx_t_10 = ((__pyx_v_k > (__pyx_v_length - 2)) != 0);
+      if (__pyx_t_10) {
+
+        /* "samplerbox_audio.pyx":52
+ *             k = <int> j
+ *             if k > length - 2:
+ *                 pos = looppos + 1             # <<<<<<<<<<<<<<
+ *                 snd.pos = pos
+ *                 ii = 0
+ */
+        __pyx_v_pos = (__pyx_v_looppos + 1);
+
+        /* "samplerbox_audio.pyx":53
+ *             if k > length - 2:
+ *                 pos = looppos + 1
+ *                 snd.pos = pos             # <<<<<<<<<<<<<<
+ *                 ii = 0
+ *                 j = pos + ii * speed
+ */
+        __pyx_t_7 = PyFloat_FromDouble(__pyx_v_pos); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 53; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_GOTREF(__pyx_t_7);
+        if (__Pyx_PyObject_SetAttrStr(__pyx_v_snd, __pyx_n_s_pos, __pyx_t_7) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 53; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+
+        /* "samplerbox_audio.pyx":54
+ *                 pos = looppos + 1
+ *                 snd.pos = pos
+ *                 ii = 0             # <<<<<<<<<<<<<<
+ *                 j = pos + ii * speed
+ *                 k = <int> j
+ */
+        __pyx_v_ii = 0;
+
+        /* "samplerbox_audio.pyx":55
+ *                 snd.pos = pos
+ *                 ii = 0
+ *                 j = pos + ii * speed             # <<<<<<<<<<<<<<
+ *                 k = <int> j
+ *             if snd.isfadeout:
+ */
+        __pyx_v_j = (__pyx_v_pos + (__pyx_v_ii * __pyx_v_speed));
+
+        /* "samplerbox_audio.pyx":56
+ *                 ii = 0
+ *                 j = pos + ii * speed
+ *                 k = <int> j             # <<<<<<<<<<<<<<
+ *             if snd.isfadeout:
+ *                multiplier = velocity * fadeout[fadeoutpos + i]
+ */
+        __pyx_v_k = ((int)__pyx_v_j);
+        goto __pyx_L10;
+      }
+      __pyx_L10:;
+
+      /* "samplerbox_audio.pyx":57
+ *                 j = pos + ii * speed
+ *                 k = <int> j
+ *             if snd.isfadeout:             # <<<<<<<<<<<<<<
+ *                multiplier = velocity * fadeout[fadeoutpos + i]
+ *             bb[2 * i] += (zz[2 * k] + (j - k) * (zz[2 * k + 2] - zz[2 * k])) * multiplier                                               # linear interpolation
+ */
+      __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_isfadeout); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 57; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_7);
+      __pyx_t_10 = __Pyx_PyObject_IsTrue(__pyx_t_7); if (unlikely(__pyx_t_10 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 57; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+      if (__pyx_t_10) {
+
+        /* "samplerbox_audio.pyx":58
+ *                 k = <int> j
+ *             if snd.isfadeout:
+ *                multiplier = velocity * fadeout[fadeoutpos + i]             # <<<<<<<<<<<<<<
+ *             bb[2 * i] += (zz[2 * k] + (j - k) * (zz[2 * k + 2] - zz[2 * k])) * multiplier                                               # linear interpolation
+ *             bb[2 * i + 1] += (zz[2 * k + 1] + (j - k) * (zz[2 * k + 3] - zz[2 * k + 1])) * multiplier
+ */
+        __pyx_v_multiplier = (__pyx_v_velocity * (__pyx_v_fadeout[(__pyx_v_fadeoutpos + __pyx_v_i)]));
+        goto __pyx_L11;
+      }
+      __pyx_L11:;
+
+      /* "samplerbox_audio.pyx":59
+ *             if snd.isfadeout:
+ *                multiplier = velocity * fadeout[fadeoutpos + i]
+ *             bb[2 * i] += (zz[2 * k] + (j - k) * (zz[2 * k + 2] - zz[2 * k])) * multiplier                                               # linear interpolation             # <<<<<<<<<<<<<<
+ *             bb[2 * i + 1] += (zz[2 * k + 1] + (j - k) * (zz[2 * k + 3] - zz[2 * k + 1])) * multiplier
+ * 
+ */
+      __pyx_t_14 = (2 * __pyx_v_i);
+      (__pyx_v_bb[__pyx_t_14]) = ((__pyx_v_bb[__pyx_t_14]) + (((__pyx_v_zz[(2 * __pyx_v_k)]) + ((__pyx_v_j - __pyx_v_k) * ((__pyx_v_zz[((2 * __pyx_v_k) + 2)]) - (__pyx_v_zz[(2 * __pyx_v_k)])))) * __pyx_v_multiplier));
+
+      /* "samplerbox_audio.pyx":60
+ *                multiplier = velocity * fadeout[fadeoutpos + i]
+ *             bb[2 * i] += (zz[2 * k] + (j - k) * (zz[2 * k + 2] - zz[2 * k])) * multiplier                                               # linear interpolation
+ *             bb[2 * i + 1] += (zz[2 * k + 1] + (j - k) * (zz[2 * k + 3] - zz[2 * k + 1])) * multiplier             # <<<<<<<<<<<<<<
+ * 
+ *         if snd.isfadeout:
+ */
+      __pyx_t_14 = ((2 * __pyx_v_i) + 1);
+      (__pyx_v_bb[__pyx_t_14]) = ((__pyx_v_bb[__pyx_t_14]) + (((__pyx_v_zz[((2 * __pyx_v_k) + 1)]) + ((__pyx_v_j - __pyx_v_k) * ((__pyx_v_zz[((2 * __pyx_v_k) + 3)]) - (__pyx_v_zz[((2 * __pyx_v_k) + 1)])))) * __pyx_v_multiplier));
+    }
+
+    /* "samplerbox_audio.pyx":62
+ *             bb[2 * i + 1] += (zz[2 * k + 1] + (j - k) * (zz[2 * k + 3] - zz[2 * k + 1])) * multiplier
  * 
  *         if snd.isfadeout:             # <<<<<<<<<<<<<<
  *             if fadeoutpos > FADEOUTLENGTH:
  *                 rmlist.append(snd)
  */
-    __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_isfadeout); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 42; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_isfadeout); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 62; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_7);
-    __pyx_t_10 = __Pyx_PyObject_IsTrue(__pyx_t_7); if (unlikely(__pyx_t_10 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 42; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_10 = __Pyx_PyObject_IsTrue(__pyx_t_7); if (unlikely(__pyx_t_10 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 62; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
     if (__pyx_t_10) {
 
-      /* "samplerbox_audio.pyx":43
+      /* "samplerbox_audio.pyx":63
  * 
  *         if snd.isfadeout:
  *             if fadeoutpos > FADEOUTLENGTH:             # <<<<<<<<<<<<<<
  *                 rmlist.append(snd)
- *             ii = 0
+ *             snd.fadeoutpos += N
  */
       __pyx_t_10 = ((__pyx_v_fadeoutpos > __pyx_v_FADEOUTLENGTH) != 0);
       if (__pyx_t_10) {
 
-        /* "samplerbox_audio.pyx":44
+        /* "samplerbox_audio.pyx":64
  *         if snd.isfadeout:
  *             if fadeoutpos > FADEOUTLENGTH:
  *                 rmlist.append(snd)             # <<<<<<<<<<<<<<
- *             ii = 0
- *             for i in range(N):
+ *             snd.fadeoutpos += N
+ * 
  */
         if (unlikely(__pyx_v_rmlist == Py_None)) {
           PyErr_Format(PyExc_AttributeError, "'NoneType' object has no attribute '%s'", "append");
-          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+          {__pyx_filename = __pyx_f[0]; __pyx_lineno = 64; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         }
-        __pyx_t_12 = __Pyx_PyList_Append(__pyx_v_rmlist, __pyx_v_snd); if (unlikely(__pyx_t_12 == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 44; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-        goto __pyx_L9;
+        __pyx_t_12 = __Pyx_PyList_Append(__pyx_v_rmlist, __pyx_v_snd); if (unlikely(__pyx_t_12 == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 64; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        goto __pyx_L13;
       }
-      __pyx_L9:;
+      __pyx_L13:;
 
-      /* "samplerbox_audio.pyx":45
+      /* "samplerbox_audio.pyx":65
  *             if fadeoutpos > FADEOUTLENGTH:
  *                 rmlist.append(snd)
- *             ii = 0             # <<<<<<<<<<<<<<
- *             for i in range(N):
- *                 j = pos + ii * speed
- */
-      __pyx_v_ii = 0;
-
-      /* "samplerbox_audio.pyx":46
- *                 rmlist.append(snd)
- *             ii = 0
- *             for i in range(N):             # <<<<<<<<<<<<<<
- *                 j = pos + ii * speed
- *                 ii += 1
- */
-      __pyx_t_9 = __pyx_v_N;
-      for (__pyx_t_13 = 0; __pyx_t_13 < __pyx_t_9; __pyx_t_13+=1) {
-        __pyx_v_i = __pyx_t_13;
-
-        /* "samplerbox_audio.pyx":47
- *             ii = 0
- *             for i in range(N):
- *                 j = pos + ii * speed             # <<<<<<<<<<<<<<
- *                 ii += 1
- *                 k = <int> j
- */
-        __pyx_v_j = (__pyx_v_pos + (__pyx_v_ii * __pyx_v_speed));
-
-        /* "samplerbox_audio.pyx":48
- *             for i in range(N):
- *                 j = pos + ii * speed
- *                 ii += 1             # <<<<<<<<<<<<<<
- *                 k = <int> j
- *                 if k > length - 2:
- */
-        __pyx_v_ii = (__pyx_v_ii + 1);
-
-        /* "samplerbox_audio.pyx":49
- *                 j = pos + ii * speed
- *                 ii += 1
- *                 k = <int> j             # <<<<<<<<<<<<<<
- *                 if k > length - 2:
- *                     pos = looppos + 1
- */
-        __pyx_v_k = ((int)__pyx_v_j);
-
-        /* "samplerbox_audio.pyx":50
- *                 ii += 1
- *                 k = <int> j
- *                 if k > length - 2:             # <<<<<<<<<<<<<<
- *                     pos = looppos + 1
- *                     snd.pos = pos
- */
-        __pyx_t_10 = ((__pyx_v_k > (__pyx_v_length - 2)) != 0);
-        if (__pyx_t_10) {
-
-          /* "samplerbox_audio.pyx":51
- *                 k = <int> j
- *                 if k > length - 2:
- *                     pos = looppos + 1             # <<<<<<<<<<<<<<
- *                     snd.pos = pos
- *                     ii = 0
- */
-          __pyx_v_pos = (__pyx_v_looppos + 1);
-
-          /* "samplerbox_audio.pyx":52
- *                 if k > length - 2:
- *                     pos = looppos + 1
- *                     snd.pos = pos             # <<<<<<<<<<<<<<
- *                     ii = 0
- *                     j = pos + ii * speed
- */
-          __pyx_t_7 = PyFloat_FromDouble(__pyx_v_pos); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 52; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-          __Pyx_GOTREF(__pyx_t_7);
-          if (__Pyx_PyObject_SetAttrStr(__pyx_v_snd, __pyx_n_s_pos, __pyx_t_7) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 52; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-          __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-
-          /* "samplerbox_audio.pyx":53
- *                     pos = looppos + 1
- *                     snd.pos = pos
- *                     ii = 0             # <<<<<<<<<<<<<<
- *                     j = pos + ii * speed
- *                     k = <int> j
- */
-          __pyx_v_ii = 0;
-
-          /* "samplerbox_audio.pyx":54
- *                     snd.pos = pos
- *                     ii = 0
- *                     j = pos + ii * speed             # <<<<<<<<<<<<<<
- *                     k = <int> j
- *                 bb[2 * i] += (zz[2 * k] + (j - k) * (zz[2 * k + 2] - zz[2 * k])) * fadeout[fadeoutpos + i]                   # linear interpolation
- */
-          __pyx_v_j = (__pyx_v_pos + (__pyx_v_ii * __pyx_v_speed));
-
-          /* "samplerbox_audio.pyx":55
- *                     ii = 0
- *                     j = pos + ii * speed
- *                     k = <int> j             # <<<<<<<<<<<<<<
- *                 bb[2 * i] += (zz[2 * k] + (j - k) * (zz[2 * k + 2] - zz[2 * k])) * fadeout[fadeoutpos + i]                   # linear interpolation
- *                 bb[2 * i + 1] += (zz[2 * k + 1] + (j - k) * (zz[2 * k + 3] - zz[2 * k + 1])) * fadeout[fadeoutpos + i]
- */
-          __pyx_v_k = ((int)__pyx_v_j);
-          goto __pyx_L12;
-        }
-        __pyx_L12:;
-
-        /* "samplerbox_audio.pyx":56
- *                     j = pos + ii * speed
- *                     k = <int> j
- *                 bb[2 * i] += (zz[2 * k] + (j - k) * (zz[2 * k + 2] - zz[2 * k])) * fadeout[fadeoutpos + i]                   # linear interpolation             # <<<<<<<<<<<<<<
- *                 bb[2 * i + 1] += (zz[2 * k + 1] + (j - k) * (zz[2 * k + 3] - zz[2 * k + 1])) * fadeout[fadeoutpos + i]
- *             snd.fadeoutpos += i
- */
-        __pyx_t_14 = (2 * __pyx_v_i);
-        (__pyx_v_bb[__pyx_t_14]) = ((__pyx_v_bb[__pyx_t_14]) + (((__pyx_v_zz[(2 * __pyx_v_k)]) + ((__pyx_v_j - __pyx_v_k) * ((__pyx_v_zz[((2 * __pyx_v_k) + 2)]) - (__pyx_v_zz[(2 * __pyx_v_k)])))) * (__pyx_v_fadeout[(__pyx_v_fadeoutpos + __pyx_v_i)])));
-
-        /* "samplerbox_audio.pyx":57
- *                     k = <int> j
- *                 bb[2 * i] += (zz[2 * k] + (j - k) * (zz[2 * k + 2] - zz[2 * k])) * fadeout[fadeoutpos + i]                   # linear interpolation
- *                 bb[2 * i + 1] += (zz[2 * k + 1] + (j - k) * (zz[2 * k + 3] - zz[2 * k + 1])) * fadeout[fadeoutpos + i]             # <<<<<<<<<<<<<<
- *             snd.fadeoutpos += i
- * 
- */
-        __pyx_t_14 = ((2 * __pyx_v_i) + 1);
-        (__pyx_v_bb[__pyx_t_14]) = ((__pyx_v_bb[__pyx_t_14]) + (((__pyx_v_zz[((2 * __pyx_v_k) + 1)]) + ((__pyx_v_j - __pyx_v_k) * ((__pyx_v_zz[((2 * __pyx_v_k) + 3)]) - (__pyx_v_zz[((2 * __pyx_v_k) + 1)])))) * (__pyx_v_fadeout[(__pyx_v_fadeoutpos + __pyx_v_i)])));
-      }
-
-      /* "samplerbox_audio.pyx":58
- *                 bb[2 * i] += (zz[2 * k] + (j - k) * (zz[2 * k + 2] - zz[2 * k])) * fadeout[fadeoutpos + i]                   # linear interpolation
- *                 bb[2 * i + 1] += (zz[2 * k + 1] + (j - k) * (zz[2 * k + 3] - zz[2 * k + 1])) * fadeout[fadeoutpos + i]
- *             snd.fadeoutpos += i             # <<<<<<<<<<<<<<
- * 
- *         else:
- */
-      __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_fadeoutpos); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 58; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-      __Pyx_GOTREF(__pyx_t_7);
-      __pyx_t_5 = __Pyx_PyInt_From_int(__pyx_v_i); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 58; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-      __Pyx_GOTREF(__pyx_t_5);
-      __pyx_t_3 = PyNumber_InPlaceAdd(__pyx_t_7, __pyx_t_5); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 58; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-      __Pyx_GOTREF(__pyx_t_3);
-      __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-      __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-      if (__Pyx_PyObject_SetAttrStr(__pyx_v_snd, __pyx_n_s_fadeoutpos, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 58; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-      goto __pyx_L8;
-    }
-    /*else*/ {
-
-      /* "samplerbox_audio.pyx":61
- * 
- *         else:
- *             ii = 0             # <<<<<<<<<<<<<<
- *             for i in range(N):
- *                 j = pos + ii * speed
- */
-      __pyx_v_ii = 0;
-
-      /* "samplerbox_audio.pyx":62
- *         else:
- *             ii = 0
- *             for i in range(N):             # <<<<<<<<<<<<<<
- *                 j = pos + ii * speed
- *                 ii += 1
- */
-      __pyx_t_9 = __pyx_v_N;
-      for (__pyx_t_13 = 0; __pyx_t_13 < __pyx_t_9; __pyx_t_13+=1) {
-        __pyx_v_i = __pyx_t_13;
-
-        /* "samplerbox_audio.pyx":63
- *             ii = 0
- *             for i in range(N):
- *                 j = pos + ii * speed             # <<<<<<<<<<<<<<
- *                 ii += 1
- *                 k = <int> j
- */
-        __pyx_v_j = (__pyx_v_pos + (__pyx_v_ii * __pyx_v_speed));
-
-        /* "samplerbox_audio.pyx":64
- *             for i in range(N):
- *                 j = pos + ii * speed
- *                 ii += 1             # <<<<<<<<<<<<<<
- *                 k = <int> j
- *                 if k > length - 2:
- */
-        __pyx_v_ii = (__pyx_v_ii + 1);
-
-        /* "samplerbox_audio.pyx":65
- *                 j = pos + ii * speed
- *                 ii += 1
- *                 k = <int> j             # <<<<<<<<<<<<<<
- *                 if k > length - 2:
- *                     pos = looppos + 1
- */
-        __pyx_v_k = ((int)__pyx_v_j);
-
-        /* "samplerbox_audio.pyx":66
- *                 ii += 1
- *                 k = <int> j
- *                 if k > length - 2:             # <<<<<<<<<<<<<<
- *                     pos = looppos + 1
- *                     snd.pos = pos
- */
-        __pyx_t_10 = ((__pyx_v_k > (__pyx_v_length - 2)) != 0);
-        if (__pyx_t_10) {
-
-          /* "samplerbox_audio.pyx":67
- *                 k = <int> j
- *                 if k > length - 2:
- *                     pos = looppos + 1             # <<<<<<<<<<<<<<
- *                     snd.pos = pos
- *                     ii = 0
- */
-          __pyx_v_pos = (__pyx_v_looppos + 1);
-
-          /* "samplerbox_audio.pyx":68
- *                 if k > length - 2:
- *                     pos = looppos + 1
- *                     snd.pos = pos             # <<<<<<<<<<<<<<
- *                     ii = 0
- *                     j = pos + ii * speed
- */
-          __pyx_t_3 = PyFloat_FromDouble(__pyx_v_pos); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 68; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-          __Pyx_GOTREF(__pyx_t_3);
-          if (__Pyx_PyObject_SetAttrStr(__pyx_v_snd, __pyx_n_s_pos, __pyx_t_3) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 68; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-          __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-
-          /* "samplerbox_audio.pyx":69
- *                     pos = looppos + 1
- *                     snd.pos = pos
- *                     ii = 0             # <<<<<<<<<<<<<<
- *                     j = pos + ii * speed
- *                     k = <int> j
- */
-          __pyx_v_ii = 0;
-
-          /* "samplerbox_audio.pyx":70
- *                     snd.pos = pos
- *                     ii = 0
- *                     j = pos + ii * speed             # <<<<<<<<<<<<<<
- *                     k = <int> j
- *                 bb[2 * i] += zz[2 * k] + (j - k) * (zz[2 * k + 2] - zz[2 * k])                                               # linear interpolation
- */
-          __pyx_v_j = (__pyx_v_pos + (__pyx_v_ii * __pyx_v_speed));
-
-          /* "samplerbox_audio.pyx":71
- *                     ii = 0
- *                     j = pos + ii * speed
- *                     k = <int> j             # <<<<<<<<<<<<<<
- *                 bb[2 * i] += zz[2 * k] + (j - k) * (zz[2 * k + 2] - zz[2 * k])                                               # linear interpolation
- *                 bb[2 * i + 1] += zz[2 * k + 1] + (j - k) * (zz[2 * k + 3] - zz[2 * k + 1])
- */
-          __pyx_v_k = ((int)__pyx_v_j);
-          goto __pyx_L15;
-        }
-        __pyx_L15:;
-
-        /* "samplerbox_audio.pyx":72
- *                     j = pos + ii * speed
- *                     k = <int> j
- *                 bb[2 * i] += zz[2 * k] + (j - k) * (zz[2 * k + 2] - zz[2 * k])                                               # linear interpolation             # <<<<<<<<<<<<<<
- *                 bb[2 * i + 1] += zz[2 * k + 1] + (j - k) * (zz[2 * k + 3] - zz[2 * k + 1])
- * 
- */
-        __pyx_t_14 = (2 * __pyx_v_i);
-        (__pyx_v_bb[__pyx_t_14]) = ((__pyx_v_bb[__pyx_t_14]) + ((__pyx_v_zz[(2 * __pyx_v_k)]) + ((__pyx_v_j - __pyx_v_k) * ((__pyx_v_zz[((2 * __pyx_v_k) + 2)]) - (__pyx_v_zz[(2 * __pyx_v_k)])))));
-
-        /* "samplerbox_audio.pyx":73
- *                     k = <int> j
- *                 bb[2 * i] += zz[2 * k] + (j - k) * (zz[2 * k + 2] - zz[2 * k])                                               # linear interpolation
- *                 bb[2 * i + 1] += zz[2 * k + 1] + (j - k) * (zz[2 * k + 3] - zz[2 * k + 1])             # <<<<<<<<<<<<<<
+ *             snd.fadeoutpos += N             # <<<<<<<<<<<<<<
  * 
  *         snd.pos += ii * speed
  */
-        __pyx_t_14 = ((2 * __pyx_v_i) + 1);
-        (__pyx_v_bb[__pyx_t_14]) = ((__pyx_v_bb[__pyx_t_14]) + ((__pyx_v_zz[((2 * __pyx_v_k) + 1)]) + ((__pyx_v_j - __pyx_v_k) * ((__pyx_v_zz[((2 * __pyx_v_k) + 3)]) - (__pyx_v_zz[((2 * __pyx_v_k) + 1)])))));
-      }
+      __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_fadeoutpos); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 65; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_7);
+      __pyx_t_3 = __Pyx_PyInt_From_int(__pyx_v_N); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 65; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_3);
+      __pyx_t_5 = PyNumber_InPlaceAdd(__pyx_t_7, __pyx_t_3); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 65; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_GOTREF(__pyx_t_5);
+      __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+      if (__Pyx_PyObject_SetAttrStr(__pyx_v_snd, __pyx_n_s_fadeoutpos, __pyx_t_5) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 65; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+      __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+      goto __pyx_L12;
     }
-    __pyx_L8:;
+    __pyx_L12:;
 
-    /* "samplerbox_audio.pyx":75
- *                 bb[2 * i + 1] += zz[2 * k + 1] + (j - k) * (zz[2 * k + 3] - zz[2 * k + 1])
+    /* "samplerbox_audio.pyx":67
+ *             snd.fadeoutpos += N
  * 
  *         snd.pos += ii * speed             # <<<<<<<<<<<<<<
  * 
- *     return b
+ *     return b.astype(numpy.int16)
  */
-    __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_pos); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_5 = PyFloat_FromDouble((__pyx_v_ii * __pyx_v_speed)); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_v_snd, __pyx_n_s_pos); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 67; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_5);
-    __pyx_t_7 = PyNumber_InPlaceAdd(__pyx_t_3, __pyx_t_5); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __pyx_t_3 = PyFloat_FromDouble((__pyx_v_ii * __pyx_v_speed)); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 67; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_t_7 = PyNumber_InPlaceAdd(__pyx_t_5, __pyx_t_3); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 67; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_GOTREF(__pyx_t_7);
-    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-    if (__Pyx_PyObject_SetAttrStr(__pyx_v_snd, __pyx_n_s_pos, __pyx_t_7) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 75; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+    if (__Pyx_PyObject_SetAttrStr(__pyx_v_snd, __pyx_n_s_pos, __pyx_t_7) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 67; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
     __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-    /* "samplerbox_audio.pyx":26
- *     cdef float* fadeout = <float *> (FADEOUT.data)
+    /* "samplerbox_audio.pyx":27
+ *     cdef double multiplier
  * 
  *     for snd in playingsounds:             # <<<<<<<<<<<<<<
  *         pos = snd.pos
@@ -1924,24 +1871,57 @@ static PyObject *__pyx_pf_16samplerbox_audio_mixaudiobuffers(CYTHON_UNUSED PyObj
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "samplerbox_audio.pyx":77
+  /* "samplerbox_audio.pyx":69
  *         snd.pos += ii * speed
  * 
- *     return b             # <<<<<<<<<<<<<<
+ *     return b.astype(numpy.int16)             # <<<<<<<<<<<<<<
  * 
  * def binary24_to_int16(char *data, int length):
  */
   __Pyx_XDECREF(__pyx_r);
-  __Pyx_INCREF(((PyObject *)__pyx_v_b));
-  __pyx_r = ((PyObject *)__pyx_v_b);
+  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_b), __pyx_n_s_astype); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 69; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_7);
+  __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_numpy); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 69; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_3);
+  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_int16); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 69; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __Pyx_GOTREF(__pyx_t_5);
+  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+  __pyx_t_3 = NULL;
+  if (CYTHON_COMPILING_IN_CPYTHON && likely(PyMethod_Check(__pyx_t_7))) {
+    __pyx_t_3 = PyMethod_GET_SELF(__pyx_t_7);
+    if (likely(__pyx_t_3)) {
+      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_7);
+      __Pyx_INCREF(__pyx_t_3);
+      __Pyx_INCREF(function);
+      __Pyx_DECREF_SET(__pyx_t_7, function);
+    }
+  }
+  if (!__pyx_t_3) {
+    __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_7, __pyx_t_5); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 69; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+    __Pyx_GOTREF(__pyx_t_1);
+  } else {
+    __pyx_t_2 = PyTuple_New(1+1); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 69; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_2);
+    PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_3); __Pyx_GIVEREF(__pyx_t_3); __pyx_t_3 = NULL;
+    PyTuple_SET_ITEM(__pyx_t_2, 0+1, __pyx_t_5);
+    __Pyx_GIVEREF(__pyx_t_5);
+    __pyx_t_5 = 0;
+    __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_7, __pyx_t_2, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 69; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  }
+  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+  __pyx_r = __pyx_t_1;
+  __pyx_t_1 = 0;
   goto __pyx_L0;
 
   /* "samplerbox_audio.pyx":17
  * cimport numpy
  * 
- * def mixaudiobuffers(list playingsounds, list rmlist, int frame_count, numpy.ndarray FADEOUT, int FADEOUTLENGTH, numpy.ndarray SPEED):             # <<<<<<<<<<<<<<
+ * def mixaudiobuffers(list playingsounds, list rmlist, int frame_count, numpy.ndarray FADEOUT, int FADEOUTLENGTH, numpy.ndarray SPEED, double GLOBALVOLUME):             # <<<<<<<<<<<<<<
  *     cdef int i, ii, k, l, N, length, looppos, fadeoutpos
- *     cdef float speed, newsz, pos, j
+ *     cdef float speed, newsz, pos, j, velocity
  */
 
   /* function exit code */
@@ -1963,8 +1943,8 @@ static PyObject *__pyx_pf_16samplerbox_audio_mixaudiobuffers(CYTHON_UNUSED PyObj
   return __pyx_r;
 }
 
-/* "samplerbox_audio.pyx":79
- *     return b
+/* "samplerbox_audio.pyx":71
+ *     return b.astype(numpy.int16)
  * 
  * def binary24_to_int16(char *data, int length):             # <<<<<<<<<<<<<<
  *     cdef int i
@@ -2003,11 +1983,11 @@ static PyObject *__pyx_pw_16samplerbox_audio_3binary24_to_int16(PyObject *__pyx_
         case  1:
         if (likely((values[1] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_length)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("binary24_to_int16", 1, 2, 2, 1); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 79; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+          __Pyx_RaiseArgtupleInvalid("binary24_to_int16", 1, 2, 2, 1); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "binary24_to_int16") < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 79; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "binary24_to_int16") < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 2) {
       goto __pyx_L5_argtuple_error;
@@ -2015,12 +1995,12 @@ static PyObject *__pyx_pw_16samplerbox_audio_3binary24_to_int16(PyObject *__pyx_
       values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
       values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
     }
-    __pyx_v_data = __Pyx_PyObject_AsString(values[0]); if (unlikely((!__pyx_v_data) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 79; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
-    __pyx_v_length = __Pyx_PyInt_As_int(values[1]); if (unlikely((__pyx_v_length == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 79; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+    __pyx_v_data = __Pyx_PyObject_AsString(values[0]); if (unlikely((!__pyx_v_data) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+    __pyx_v_length = __Pyx_PyInt_As_int(values[1]); if (unlikely((__pyx_v_length == (int)-1) && PyErr_Occurred())) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("binary24_to_int16", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 79; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
+  __Pyx_RaiseArgtupleInvalid("binary24_to_int16", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
   __pyx_L3_error:;
   __Pyx_AddTraceback("samplerbox_audio.binary24_to_int16", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -2053,23 +2033,23 @@ static PyObject *__pyx_pf_16samplerbox_audio_2binary24_to_int16(CYTHON_UNUSED Py
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("binary24_to_int16", 0);
 
-  /* "samplerbox_audio.pyx":81
+  /* "samplerbox_audio.pyx":73
  * def binary24_to_int16(char *data, int length):
  *     cdef int i
  *     res = numpy.zeros(length, numpy.int16)             # <<<<<<<<<<<<<<
  *     b = <char *>((<numpy.ndarray>res).data)
  *     for i in range(length):
  */
-  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_numpy); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 81; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_GetModuleGlobalName(__pyx_n_s_numpy); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 73; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_zeros); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 81; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_zeros); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 73; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyInt_From_int(__pyx_v_length); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 81; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_2 = __Pyx_PyInt_From_int(__pyx_v_length); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 73; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_numpy); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 81; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_numpy); if (unlikely(!__pyx_t_4)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 73; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_int16); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 81; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_int16); if (unlikely(!__pyx_t_5)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 73; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   __pyx_t_4 = NULL;
@@ -2084,7 +2064,7 @@ static PyObject *__pyx_pf_16samplerbox_audio_2binary24_to_int16(CYTHON_UNUSED Py
       __pyx_t_6 = 1;
     }
   }
-  __pyx_t_7 = PyTuple_New(2+__pyx_t_6); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 81; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_7 = PyTuple_New(2+__pyx_t_6); if (unlikely(!__pyx_t_7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 73; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_7);
   if (__pyx_t_4) {
     PyTuple_SET_ITEM(__pyx_t_7, 0, __pyx_t_4); __Pyx_GIVEREF(__pyx_t_4); __pyx_t_4 = NULL;
@@ -2095,14 +2075,14 @@ static PyObject *__pyx_pf_16samplerbox_audio_2binary24_to_int16(CYTHON_UNUSED Py
   __Pyx_GIVEREF(__pyx_t_5);
   __pyx_t_2 = 0;
   __pyx_t_5 = 0;
-  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_7, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 81; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_7, NULL); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 73; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __pyx_v_res = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "samplerbox_audio.pyx":82
+  /* "samplerbox_audio.pyx":74
  *     cdef int i
  *     res = numpy.zeros(length, numpy.int16)
  *     b = <char *>((<numpy.ndarray>res).data)             # <<<<<<<<<<<<<<
@@ -2111,7 +2091,7 @@ static PyObject *__pyx_pf_16samplerbox_audio_2binary24_to_int16(CYTHON_UNUSED Py
  */
   __pyx_v_b = ((char *)((PyArrayObject *)__pyx_v_res)->data);
 
-  /* "samplerbox_audio.pyx":83
+  /* "samplerbox_audio.pyx":75
  *     res = numpy.zeros(length, numpy.int16)
  *     b = <char *>((<numpy.ndarray>res).data)
  *     for i in range(length):             # <<<<<<<<<<<<<<
@@ -2122,7 +2102,7 @@ static PyObject *__pyx_pf_16samplerbox_audio_2binary24_to_int16(CYTHON_UNUSED Py
   for (__pyx_t_9 = 0; __pyx_t_9 < __pyx_t_8; __pyx_t_9+=1) {
     __pyx_v_i = __pyx_t_9;
 
-    /* "samplerbox_audio.pyx":84
+    /* "samplerbox_audio.pyx":76
  *     b = <char *>((<numpy.ndarray>res).data)
  *     for i in range(length):
  *         b[2*i] = data[3*i+1]             # <<<<<<<<<<<<<<
@@ -2131,7 +2111,7 @@ static PyObject *__pyx_pf_16samplerbox_audio_2binary24_to_int16(CYTHON_UNUSED Py
  */
     (__pyx_v_b[(2 * __pyx_v_i)]) = (__pyx_v_data[((3 * __pyx_v_i) + 1)]);
 
-    /* "samplerbox_audio.pyx":85
+    /* "samplerbox_audio.pyx":77
  *     for i in range(length):
  *         b[2*i] = data[3*i+1]
  *         b[2*i+1] = data[3*i+2]             # <<<<<<<<<<<<<<
@@ -2140,7 +2120,7 @@ static PyObject *__pyx_pf_16samplerbox_audio_2binary24_to_int16(CYTHON_UNUSED Py
     (__pyx_v_b[((2 * __pyx_v_i) + 1)]) = (__pyx_v_data[((3 * __pyx_v_i) + 2)]);
   }
 
-  /* "samplerbox_audio.pyx":86
+  /* "samplerbox_audio.pyx":78
  *         b[2*i] = data[3*i+1]
  *         b[2*i+1] = data[3*i+2]
  *     return res             # <<<<<<<<<<<<<<
@@ -2150,8 +2130,8 @@ static PyObject *__pyx_pf_16samplerbox_audio_2binary24_to_int16(CYTHON_UNUSED Py
   __pyx_r = __pyx_v_res;
   goto __pyx_L0;
 
-  /* "samplerbox_audio.pyx":79
- *     return b
+  /* "samplerbox_audio.pyx":71
+ *     return b.astype(numpy.int16)
  * 
  * def binary24_to_int16(char *data, int length):             # <<<<<<<<<<<<<<
  *     cdef int i
@@ -4200,11 +4180,13 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_FADEOUTLENGTH, __pyx_k_FADEOUTLENGTH, sizeof(__pyx_k_FADEOUTLENGTH), 0, 0, 1, 1},
   {&__pyx_kp_u_Format_string_allocated_too_shor, __pyx_k_Format_string_allocated_too_shor, sizeof(__pyx_k_Format_string_allocated_too_shor), 0, 1, 0, 0},
   {&__pyx_kp_u_Format_string_allocated_too_shor_2, __pyx_k_Format_string_allocated_too_shor_2, sizeof(__pyx_k_Format_string_allocated_too_shor_2), 0, 1, 0, 0},
+  {&__pyx_n_s_GLOBALVOLUME, __pyx_k_GLOBALVOLUME, sizeof(__pyx_k_GLOBALVOLUME), 0, 0, 1, 1},
   {&__pyx_n_s_N, __pyx_k_N, sizeof(__pyx_k_N), 0, 0, 1, 1},
   {&__pyx_kp_u_Non_native_byte_order_not_suppor, __pyx_k_Non_native_byte_order_not_suppor, sizeof(__pyx_k_Non_native_byte_order_not_suppor), 0, 1, 0, 0},
   {&__pyx_n_s_RuntimeError, __pyx_k_RuntimeError, sizeof(__pyx_k_RuntimeError), 0, 0, 1, 1},
   {&__pyx_n_s_SPEED, __pyx_k_SPEED, sizeof(__pyx_k_SPEED), 0, 0, 1, 1},
   {&__pyx_n_s_ValueError, __pyx_k_ValueError, sizeof(__pyx_k_ValueError), 0, 0, 1, 1},
+  {&__pyx_n_s_astype, __pyx_k_astype, sizeof(__pyx_k_astype), 0, 0, 1, 1},
   {&__pyx_n_s_b, __pyx_k_b, sizeof(__pyx_k_b), 0, 0, 1, 1},
   {&__pyx_n_s_bb, __pyx_k_bb, sizeof(__pyx_k_bb), 0, 0, 1, 1},
   {&__pyx_n_s_binary24_to_int16, __pyx_k_binary24_to_int16, sizeof(__pyx_k_binary24_to_int16), 0, 0, 1, 1},
@@ -4227,6 +4209,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_main, __pyx_k_main, sizeof(__pyx_k_main), 0, 0, 1, 1},
   {&__pyx_n_s_midinote, __pyx_k_midinote, sizeof(__pyx_k_midinote), 0, 0, 1, 1},
   {&__pyx_n_s_mixaudiobuffers, __pyx_k_mixaudiobuffers, sizeof(__pyx_k_mixaudiobuffers), 0, 0, 1, 1},
+  {&__pyx_n_s_multiplier, __pyx_k_multiplier, sizeof(__pyx_k_multiplier), 0, 0, 1, 1},
   {&__pyx_kp_u_ndarray_is_not_C_contiguous, __pyx_k_ndarray_is_not_C_contiguous, sizeof(__pyx_k_ndarray_is_not_C_contiguous), 0, 1, 0, 0},
   {&__pyx_kp_u_ndarray_is_not_Fortran_contiguou, __pyx_k_ndarray_is_not_Fortran_contiguou, sizeof(__pyx_k_ndarray_is_not_Fortran_contiguou), 0, 1, 0, 0},
   {&__pyx_n_s_newsz, __pyx_k_newsz, sizeof(__pyx_k_newsz), 0, 0, 1, 1},
@@ -4245,13 +4228,14 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_speed, __pyx_k_speed, sizeof(__pyx_k_speed), 0, 0, 1, 1},
   {&__pyx_n_s_test, __pyx_k_test, sizeof(__pyx_k_test), 0, 0, 1, 1},
   {&__pyx_kp_u_unknown_dtype_code_in_numpy_pxd, __pyx_k_unknown_dtype_code_in_numpy_pxd, sizeof(__pyx_k_unknown_dtype_code_in_numpy_pxd), 0, 1, 0, 0},
+  {&__pyx_n_s_velocity, __pyx_k_velocity, sizeof(__pyx_k_velocity), 0, 0, 1, 1},
   {&__pyx_n_s_z, __pyx_k_z, sizeof(__pyx_k_z), 0, 0, 1, 1},
   {&__pyx_n_s_zeros, __pyx_k_zeros, sizeof(__pyx_k_zeros), 0, 0, 1, 1},
   {&__pyx_n_s_zz, __pyx_k_zz, sizeof(__pyx_k_zz), 0, 0, 1, 1},
   {0, 0, 0, 0, 0, 0, 0}
 };
 static int __Pyx_InitCachedBuiltins(void) {
-  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 46; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 47; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_builtin_ValueError = __Pyx_GetBuiltinName(__pyx_n_s_ValueError); if (!__pyx_builtin_ValueError) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 215; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_builtin_RuntimeError = __Pyx_GetBuiltinName(__pyx_n_s_RuntimeError); if (!__pyx_builtin_RuntimeError) {__pyx_filename = __pyx_f[1]; __pyx_lineno = 799; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   return 0;
@@ -4332,26 +4316,26 @@ static int __Pyx_InitCachedConstants(void) {
   /* "samplerbox_audio.pyx":17
  * cimport numpy
  * 
- * def mixaudiobuffers(list playingsounds, list rmlist, int frame_count, numpy.ndarray FADEOUT, int FADEOUTLENGTH, numpy.ndarray SPEED):             # <<<<<<<<<<<<<<
+ * def mixaudiobuffers(list playingsounds, list rmlist, int frame_count, numpy.ndarray FADEOUT, int FADEOUTLENGTH, numpy.ndarray SPEED, double GLOBALVOLUME):             # <<<<<<<<<<<<<<
  *     cdef int i, ii, k, l, N, length, looppos, fadeoutpos
- *     cdef float speed, newsz, pos, j
+ *     cdef float speed, newsz, pos, j, velocity
  */
-  __pyx_tuple__7 = PyTuple_Pack(24, __pyx_n_s_playingsounds, __pyx_n_s_rmlist, __pyx_n_s_frame_count, __pyx_n_s_FADEOUT, __pyx_n_s_FADEOUTLENGTH, __pyx_n_s_SPEED, __pyx_n_s_i, __pyx_n_s_ii, __pyx_n_s_k, __pyx_n_s_l, __pyx_n_s_N, __pyx_n_s_length, __pyx_n_s_looppos, __pyx_n_s_fadeoutpos, __pyx_n_s_speed, __pyx_n_s_newsz, __pyx_n_s_pos, __pyx_n_s_j, __pyx_n_s_b, __pyx_n_s_bb, __pyx_n_s_z, __pyx_n_s_zz, __pyx_n_s_fadeout, __pyx_n_s_snd); if (unlikely(!__pyx_tuple__7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple__7 = PyTuple_Pack(27, __pyx_n_s_playingsounds, __pyx_n_s_rmlist, __pyx_n_s_frame_count, __pyx_n_s_FADEOUT, __pyx_n_s_FADEOUTLENGTH, __pyx_n_s_SPEED, __pyx_n_s_GLOBALVOLUME, __pyx_n_s_i, __pyx_n_s_ii, __pyx_n_s_k, __pyx_n_s_l, __pyx_n_s_N, __pyx_n_s_length, __pyx_n_s_looppos, __pyx_n_s_fadeoutpos, __pyx_n_s_speed, __pyx_n_s_newsz, __pyx_n_s_pos, __pyx_n_s_j, __pyx_n_s_velocity, __pyx_n_s_b, __pyx_n_s_bb, __pyx_n_s_z, __pyx_n_s_zz, __pyx_n_s_fadeout, __pyx_n_s_multiplier, __pyx_n_s_snd); if (unlikely(!__pyx_tuple__7)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple__7);
   __Pyx_GIVEREF(__pyx_tuple__7);
-  __pyx_codeobj__8 = (PyObject*)__Pyx_PyCode_New(6, 0, 24, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__7, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_opt_piget_samplerbox_python_sam, __pyx_n_s_mixaudiobuffers, 17, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_codeobj__8 = (PyObject*)__Pyx_PyCode_New(7, 0, 27, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__7, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_opt_piget_samplerbox_python_sam, __pyx_n_s_mixaudiobuffers, 17, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__8)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
 
-  /* "samplerbox_audio.pyx":79
- *     return b
+  /* "samplerbox_audio.pyx":71
+ *     return b.astype(numpy.int16)
  * 
  * def binary24_to_int16(char *data, int length):             # <<<<<<<<<<<<<<
  *     cdef int i
  *     res = numpy.zeros(length, numpy.int16)
  */
-  __pyx_tuple__9 = PyTuple_Pack(5, __pyx_n_s_data, __pyx_n_s_length, __pyx_n_s_i, __pyx_n_s_res, __pyx_n_s_b); if (unlikely(!__pyx_tuple__9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 79; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple__9 = PyTuple_Pack(5, __pyx_n_s_data, __pyx_n_s_length, __pyx_n_s_i, __pyx_n_s_res, __pyx_n_s_b); if (unlikely(!__pyx_tuple__9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple__9);
   __Pyx_GIVEREF(__pyx_tuple__9);
-  __pyx_codeobj__10 = (PyObject*)__Pyx_PyCode_New(2, 0, 5, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__9, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_opt_piget_samplerbox_python_sam, __pyx_n_s_binary24_to_int16, 79, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 79; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_codeobj__10 = (PyObject*)__Pyx_PyCode_New(2, 0, 5, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__9, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_opt_piget_samplerbox_python_sam, __pyx_n_s_binary24_to_int16, 71, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__10)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -4478,25 +4462,25 @@ PyMODINIT_FUNC PyInit_samplerbox_audio(void)
   /* "samplerbox_audio.pyx":17
  * cimport numpy
  * 
- * def mixaudiobuffers(list playingsounds, list rmlist, int frame_count, numpy.ndarray FADEOUT, int FADEOUTLENGTH, numpy.ndarray SPEED):             # <<<<<<<<<<<<<<
+ * def mixaudiobuffers(list playingsounds, list rmlist, int frame_count, numpy.ndarray FADEOUT, int FADEOUTLENGTH, numpy.ndarray SPEED, double GLOBALVOLUME):             # <<<<<<<<<<<<<<
  *     cdef int i, ii, k, l, N, length, looppos, fadeoutpos
- *     cdef float speed, newsz, pos, j
+ *     cdef float speed, newsz, pos, j, velocity
  */
   __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_16samplerbox_audio_1mixaudiobuffers, NULL, __pyx_n_s_samplerbox_audio); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_mixaudiobuffers, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 17; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "samplerbox_audio.pyx":79
- *     return b
+  /* "samplerbox_audio.pyx":71
+ *     return b.astype(numpy.int16)
  * 
  * def binary24_to_int16(char *data, int length):             # <<<<<<<<<<<<<<
  *     cdef int i
  *     res = numpy.zeros(length, numpy.int16)
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_16samplerbox_audio_3binary24_to_int16, NULL, __pyx_n_s_samplerbox_audio); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 79; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_16samplerbox_audio_3binary24_to_int16, NULL, __pyx_n_s_samplerbox_audio); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_binary24_to_int16, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 79; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_binary24_to_int16, __pyx_t_1) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 71; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
   /* "samplerbox_audio.pyx":1
@@ -4781,6 +4765,55 @@ static CYTHON_INLINE int __Pyx_TypeTest(PyObject *obj, PyTypeObject *type) {
                  Py_TYPE(obj)->tp_name, type->tp_name);
     return 0;
 }
+
+#if CYTHON_COMPILING_IN_CPYTHON
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallMethO(PyObject *func, PyObject *arg) {
+    PyObject *self, *result;
+    PyCFunction cfunc;
+    cfunc = PyCFunction_GET_FUNCTION(func);
+    self = PyCFunction_GET_SELF(func);
+    if (unlikely(Py_EnterRecursiveCall((char*)" while calling a Python object")))
+        return NULL;
+    result = cfunc(self, arg);
+    Py_LeaveRecursiveCall();
+    if (unlikely(!result) && unlikely(!PyErr_Occurred())) {
+        PyErr_SetString(
+            PyExc_SystemError,
+            "NULL result without error in PyObject_Call");
+    }
+    return result;
+}
+#endif
+
+#if CYTHON_COMPILING_IN_CPYTHON
+static PyObject* __Pyx__PyObject_CallOneArg(PyObject *func, PyObject *arg) {
+    PyObject *result;
+    PyObject *args = PyTuple_New(1);
+    if (unlikely(!args)) return NULL;
+    Py_INCREF(arg);
+    PyTuple_SET_ITEM(args, 0, arg);
+    result = __Pyx_PyObject_Call(func, args, NULL);
+    Py_DECREF(args);
+    return result;
+}
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallOneArg(PyObject *func, PyObject *arg) {
+#ifdef __Pyx_CyFunction_USED
+    if (likely(PyCFunction_Check(func) || PyObject_TypeCheck(func, __pyx_CyFunctionType))) {
+#else
+    if (likely(PyCFunction_Check(func))) {
+#endif
+        if (likely(PyCFunction_GET_FLAGS(func) & METH_O)) {
+            return __Pyx_PyObject_CallMethO(func, arg);
+        }
+    }
+    return __Pyx__PyObject_CallOneArg(func, arg);
+}
+#else
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallOneArg(PyObject *func, PyObject *arg) {
+    PyObject* args = PyTuple_Pack(1, arg);
+    return (likely(args)) ? __Pyx_PyObject_Call(func, args, NULL) : NULL;
+}
+#endif
 
 static CYTHON_INLINE void __Pyx_ErrRestore(PyObject *type, PyObject *value, PyObject *tb) {
 #if CYTHON_COMPILING_IN_CPYTHON
