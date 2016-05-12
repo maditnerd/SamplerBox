@@ -20,7 +20,7 @@ USE_SERIALPORT_MIDI = False             # Set to True to enable MIDI IN via Seri
 USE_I2C_7SEGMENTDISPLAY = False         # Set to True to use a 7-segment display via I2C
 USE_ADAFRUITLCD = True
 USE_BUTTONS = False                     # Set to True to use momentary buttons (connected to RaspberryPi's GPIO pins) to change preset
-MAX_POLYPHONY = 80                      # This can be set higher, but 80 is a safe value
+MAX_POLYPHONY = 128                      # This can be set higher, but 80 is a safe value
 LOCAL_CONFIG = 'local_config.py'	# Local config filename
 DEBUG = False                           # Enable to switch verbose logging on
 
@@ -158,7 +158,8 @@ class Sound:
             npdata = numpy.repeat(npdata, 2)
         return npdata
 
-FADEOUTLENGTH = 30000
+# Length of notes
+FADEOUTLENGTH = 100000
 FADEOUT = numpy.linspace(1., 0., FADEOUTLENGTH)            # by default, float64
 FADEOUT = numpy.power(FADEOUT, 6)
 FADEOUT = numpy.append(FADEOUT, numpy.zeros(FADEOUTLENGTH, numpy.float32)).astype(numpy.float32)
@@ -255,7 +256,7 @@ def MidiCallback(message, time_stamp):
 LoadingThread = None
 LoadingInterrupt = False
 
-
+# This function load samples in a seperated thread
 def LoadSamples():
     global LoadingThread
     global LoadingInterrupt
@@ -272,7 +273,7 @@ def LoadSamples():
 
 NOTES = ["c", "c#", "d", "d#", "e", "f", "f#", "g", "g#", "a", "a#", "b"]
 
-
+# Samples loading
 def ActuallyLoad():
     global preset
     global samples
@@ -426,7 +427,7 @@ if USE_BUTTONS:
 
 
 #########################################
-# Adafruit RGB PLATE LCD 16x2
+# II2C Adafruit RGB PLATE LCD 16x2
 #
 #########################################
 if USE_ADAFRUITLCD:
@@ -435,12 +436,14 @@ if USE_ADAFRUITLCD:
     lcd = LCD.Adafruit_CharLCDPlate()
     lastbuttontime = 0
 
+    # Display a string
     def display_text(s):
         print "LCD:"+s
         lcd.set_color(1.0, 1.0, 1.0)
         lcd.clear()
         lcd.message(s)
 
+    # Display menu
     def LCDMenu():
         global lastbuttontime
         global preset, lastbuttontime, globalvolume, globaltranspose, sustain, samplesList, nbInstruments
@@ -451,12 +454,22 @@ if USE_ADAFRUITLCD:
         
 
         print "Main menu"
+        
+        # Get instruments name
         samplesList = []
         for samplesDir in os.listdir("/user/samples"):
-            samplesList.append(samplesDir)
-            # samplesSplitted = samplesFiles.split(" ", 2)
+            nbsamples = int(samplesDir.split(" ", 2)[0])
+            if nbsamples < 10:
+                samplesList.append("0" + samplesDir)
+            # samplesSplitted = samplesDir.split(" ", 2)
+        for samplesDir in os.listdir("/user/samples"):
+            nbsamples = int(samplesDir.split(" ", 2)[0])
+            if nbsamples >= 10:
+                samplesList.append(samplesDir)
 
         samplesList.sort()
+        print samplesList
+
         nbInstruments = len(samplesList)
         display_text(menu[menuItem] + "\n" + samplesList[0])
 
@@ -464,7 +477,7 @@ if USE_ADAFRUITLCD:
         while True:
             now = time.time()
 
-            # If next pressed
+            # If RIGHT pressed
             if lcd.is_pressed(LCD.RIGHT) and (now - lastbuttontime) > 0.2:
                 # Change item
                 lastbuttontime = now
@@ -476,7 +489,7 @@ if USE_ADAFRUITLCD:
                 #  Display value
                 displayValue(menu[menuItem])
 
-            # If Previous pressed
+            # If LEFT pressed
             if lcd.is_pressed(LCD.LEFT) and (now - lastbuttontime) > 0.2:
                 lastbuttontime = now
                 menuItem = menuItem - 1
@@ -484,6 +497,7 @@ if USE_ADAFRUITLCD:
                     menuItem = LastMenuItem
                 displayValue(menu[menuItem])
 
+            # If UP pressed
             if lcd.is_pressed(LCD.UP) and (now - lastbuttontime) > 0.2:
                 lastbuttontime = now
                 if menu[menuItem] == "Quit":
@@ -491,6 +505,7 @@ if USE_ADAFRUITLCD:
                 else:
                     raiseValue(menu[menuItem])
 
+            # If DOWN pressed
             if lcd.is_pressed(LCD.DOWN) and (now - lastbuttontime) > 0.2:
                 lastbuttontime = now
                 
@@ -499,6 +514,7 @@ if USE_ADAFRUITLCD:
                 else:
                     lowerValue(menu[menuItem])
 
+            # If SELECT pressed
             if lcd.is_pressed(LCD.SELECT) and (now - lastbuttontime) > 0.2:
                 lastbuttontime = now
                 if menu[menuItem] == "Quit":
@@ -507,6 +523,7 @@ if USE_ADAFRUITLCD:
                     LoadSamples()
             time.sleep(0.020)
 
+# When UP is pressed
     def raiseValue(item):
         global preset, lastbuttontime, globalvolume, globaltranspose, sustain, nbInstruments
         if item == "Instrument":
@@ -524,6 +541,7 @@ if USE_ADAFRUITLCD:
             globaltranspose = globaltranpose + 1
         displayValue(item)
 
+# Display value (on change)
     def displayValue(item):
         global preset, lastbuttontime, globalvolume, globaltranspose, sustain, samplesList
         print item
@@ -539,6 +557,7 @@ if USE_ADAFRUITLCD:
             value = ""
         display_text(item + "\n" + str(value))
 
+# When DOWN is pressed
     def lowerValue(item):
         global preset, lastbuttontime, globalvolume, globaltranspose, sustain
         if item == "Instrument":
