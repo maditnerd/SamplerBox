@@ -20,7 +20,7 @@ USE_SERIALPORT_MIDI = False             # Set to True to enable MIDI IN via Seri
 USE_I2C_7SEGMENTDISPLAY = False         # Set to True to use a 7-segment display via I2C
 USE_ADAFRUITLCD = True
 USE_BUTTONS = False                     # Set to True to use momentary buttons (connected to RaspberryPi's GPIO pins) to change preset
-MAX_POLYPHONY = 128                      # This can be set higher, but 80 is a safe value
+MAX_POLYPHONY = 10                     # This can be set higher, but 80 is a safe value
 LOCAL_CONFIG = 'local_config.py'	# Local config filename
 DEBUG = False                           # Enable to switch verbose logging on
 
@@ -32,7 +32,7 @@ if os.path.isfile(LOCAL_CONFIG):
 import wave
 import time
 import numpy
-import os
+import os,glob
 import re
 import pyaudio
 import threading
@@ -170,7 +170,7 @@ playingnotes = {}
 sustainplayingnotes = []
 sustain = False
 playingsounds = []
-globalvolume = 10 ** (-12.0/20)  # -12dB default global volume
+globalvolume = 1  # -12dB default global volume
 globaltranspose = 0
 print globalvolume
 
@@ -208,8 +208,12 @@ def MidiCallback(message, time_stamp):
     # print "Channel:" + str(messagechannel)
     # print "Note:" + str(note)
 
+    # Volume 
     if messagetype == 11:
-        globalvolume = float(velocity) / 100
+        oldRange = 125  
+        newRange = 100
+        volumeConverted = (velocity * newRange) / oldRange
+        globalvolume = float(volumeConverted) / 100
 
 
 
@@ -282,7 +286,7 @@ def ActuallyLoad():
     global globalvelocitysensitivity
     playingsounds = []
     samples = {}
-    globalvolume = 10 ** (-12.0/20)  # -12dB default global volume
+    globalvolume = 1  # -12dB default global volume
     globaltranspose = 0
     globalvelocitysensitivity = 0 # default midi velocity sensitivity
 
@@ -328,18 +332,29 @@ def ActuallyLoad():
                             velocity = int(info.get('velocity', defaultparams['velocity']))
                             notename = info.get('notename', defaultparams['notename'])
                             if notename:
+                                print notename
                                 midinote = NOTES.index(notename[:-1].lower()) + (int(notename[-1])+2) * 12
                             samples[midinote, velocity] = Sound(os.path.join(dirname, fname), midinote, velocity)
                 except:
                     print "Error in definition file, skipping line %s." % (i+1)
 
     else:
+        globalvelocitysensitivity = 1
+        velocity = 127
+        for fname in glob.glob(dirname + "/*.wav"):
+            notename = os.path.basename(fname)
+            notename = os.path.splitext(notename)[0]
+            midinote = NOTES.index(notename[:-1].lower()) + (int(notename[-1])+2) * 12
+            samples[midinote, velocity] = Sound(os.path.join(dirname, fname), midinote, velocity)
+        
+        """
         for midinote in range(0, 127):
             if LoadingInterrupt:
                 return
             file = os.path.join(dirname, "%d.wav" % midinote)
             if os.path.isfile(file):
                 samples[midinote, 127] = Sound(file, midinote, 127)
+        """
 
     initial_keys = set(samples.keys())
     for midinote in xrange(128):
@@ -533,7 +548,7 @@ if USE_ADAFRUITLCD:
                 print "instru:" + str(nbInstruments)
                 LoadSamples()
         elif item == "Volume":
-            if globalvolume < 2:
+            if globalvolume < 1:
                 globalvolume = globalvolume + 0.1
         elif item == "Sustain":
             sustain = True
